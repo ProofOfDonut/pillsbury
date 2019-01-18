@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: pod-dashboard
+  template:
+    metadata:
+      labels:
+        name: pod-dashboard
+    spec:
+      containers:
+        - name: pod-dashboard
+          image: gcr.io/silver-harmony-228021/dashboard:$image_version
+          ports:
+            - containerPort: 8000

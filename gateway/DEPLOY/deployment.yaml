@@ -1,0 +1,125 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pod-gateway-configmap
+data:
+  httpd.conf: |
+    # Apache httpd v2.4 minimal configuration
+    # This can be reduced further if you remove the accees log and mod_log_config
+
+    ServerRoot "/usr/local/apache2"
+
+    # Minimum modules needed
+    LoadModule mpm_event_module modules/mod_mpm_event.so
+    LoadModule log_config_module modules/mod_log_config.so
+    LoadModule mime_module modules/mod_mime.so
+    LoadModule dir_module modules/mod_dir.so
+    LoadModule authz_core_module modules/mod_authz_core.so
+    LoadModule unixd_module modules/mod_unixd.so
+    LoadModule alias_module modules/mod_alias.so
+    LoadModule proxy_module modules/mod_proxy.so
+    LoadModule proxy_http_module modules/mod_proxy_http.so
+
+    TypesConfig conf/mime.types
+
+    PidFile logs/httpd.pid
+
+    # Comment this out if running httpd as a non root user
+    User nobody
+
+    # Port to Listen on
+    Listen 8000
+
+    # In a basic setup httpd can only serve files from its document root
+    DocumentRoot "/usr/local/apache2/htdocs"
+
+    # Default file to serve
+    DirectoryIndex index.html
+
+    # Errors go to stderr
+    ErrorLog /proc/self/fd/2
+
+    # Access log to stdout
+    LogFormat "%h %l %u %t \"%r\" %>s %b" common
+    CustomLog /proc/self/fd/1 common
+
+    Mutex posixsem proxy
+
+    # Never change this block
+    <Directory />
+      AllowOverride None
+      Require all denied
+    </Directory>
+
+    # Deny documents to be served from the DocumentRoot
+    <Directory "/usr/local/apache2/htdocs">
+      Require all denied
+    </Directory>
+
+    <VirtualHost *:8000>
+      ServerName donut.dance
+      # Redirect HTTP to HTTPS
+      <If "%{HTTP:X-Forwarded-Proto} -strcmatch 'http'">
+        Redirect / https://donut.dance/
+      </If>
+
+      # Proxy the requests to the application
+      # "myapp" in the rules relies a K8s cluster add-on for DNS aliases
+      # see https://kubernetes.io/docs/concepts/services-networking/service/#dns
+      ProxyRequests Off
+      ProxyPass         "/"    "http://pod-dashboard:8000/"
+      ProxyPassReverse  "/"    "http://pod-dashboard:8000/"
+    </VirtualHost>
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: pod-gateway
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 8000
+    targetPort: pod-gateway
+    protocol: TCP
+  selector:
+    app: pod-gateway
+
+---
+kind: Deployment
+apiVersion: apps/v1beta2
+metadata:
+  name: pod-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pod-gateway
+  template:
+    metadata:
+      name: pod-gateway
+      labels:
+        app: pod-gateway
+    spec:
+      containers:
+      - name: pod-gateway
+        image: httpd:2.4-alpine
+        imagePullPolicy: Always
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+        command: ["/usr/local/apache2/bin/httpd"]
+        args: ["-f", "/etc/pod-gateway-configmap/httpd.conf", "-DFOREGROUND"]
+        ports:
+        - name: pod-gateway
+          containerPort: 8000
+        volumeMounts:
+        - mountPath: /etc/pod-gateway-configmap
+          name: apacheconfig
+          readOnly: true
+      volumes:
+        - name: apacheconfig
+          configMap:
+            name: pod-gateway-configmap

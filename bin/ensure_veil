@@ -1,0 +1,5 @@
+#!/bin/bash
+set -e -o pipefail
+workspace=$(pwd)
+
+"$workspace/tools/veil/ensure_veil.sh" $@

@@ -1,0 +1,16 @@
+#!/bin/bash
+set -e -o pipefail
+workspace=$(pwd)
+
+VEIL_PATH="/tmp/veil$workspace"
+export NODE_PATH="$VEIL_PATH/third_party/node_modules"
+export PYTHONPATH="$VEIL_PATH"
+flags=''
+if [ "${1:0:1}" == '-' ]; then
+  flags="$1"
+fi
+# If the update flag is passed, clear the database patches directory.
+if [[ "$flags" =~ 'u' ]]; then
+  rm -rf "$VEIL_PATH/pod_db/BUILD/patches"
+fi
+$workspace/tools/veil/veil.sh "$@"

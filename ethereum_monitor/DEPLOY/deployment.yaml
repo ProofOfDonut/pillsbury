@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-ethereum-monitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: pod-ethereum-monitor
+  template:
+    metadata:
+      labels:
+        name: pod-ethereum-monitor
+    spec:
+      containers:
+        - name: pod-ethereum-monitor
+          image: gcr.io/silver-harmony-228021/ethereum-monitor:$image_version
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: pod-ethereum-monitor-config
+              mountPath: /pod/config/ethereum-monitor
+            - name: pod-db-config
+              mountPath: /pod/config/db
+            - name: pod-db-ssl-client-cert
+              mountPath: /pod/config/db_certs/client-cert
+            - name: pod-db-ssl-client-key
+              mountPath: /pod/config/db_certs/client-key
+            - name: pod-db-ssl-server-ca
+              mountPath: /pod/config/db_certs/server-ca
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: ETHEREUM_MONITOR_CONFIG
+              value: "/pod/config/ethereum-monitor/json"
+            - name: DB_CONFIG
+              value: "/pod/config/db/json"
+            - name: DB_NAME
+              value: "pod"
+      volumes:
+        - name: pod-ethereum-monitor-config
+          secret:
+            secretName: pod-ethereum-monitor-config
+            defaultMode: 0400
+        - name: pod-db-config
+          secret:
+            secretName: pod-db-config
+            defaultMode: 0400
+        - name: pod-db-ssl-client-cert
+          secret:
+            secretName: pod-db-ssl-client-cert
+            defaultMode: 0400
+        - name: pod-db-ssl-client-key
+          secret:
+            secretName: pod-db-ssl-client-key
+            defaultMode: 0400
+        - name: pod-db-ssl-server-ca
+          secret:
+            secretName: pod-db-ssl-server-ca
+            defaultMode: 0400

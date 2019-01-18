@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-reddit-monitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: pod-reddit-monitor
+  template:
+    metadata:
+      labels:
+        name: pod-reddit-monitor
+    spec:
+      containers:
+        - name: pod-reddit-monitor
+          image: gcr.io/silver-harmony-228021/reddit-monitor:$image_version
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: pod-reddit-monitor-config
+              mountPath: /pod/config/reddit-monitor
+            - name: pod-db-config
+              mountPath: /pod/config/db
+            - name: pod-db-ssl-client-cert
+              mountPath: /pod/config/db_certs/client-cert
+            - name: pod-db-ssl-client-key
+              mountPath: /pod/config/db_certs/client-key
+            - name: pod-db-ssl-server-ca
+              mountPath: /pod/config/db_certs/server-ca
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: REDDIT_MONITOR_CONFIG
+              value: "/pod/config/reddit-monitor/json"
+            - name: DB_CONFIG
+              value: "/pod/config/db/json"
+            - name: DB_NAME
+              value: "pod"
+      volumes:
+        - name: pod-reddit-monitor-config
+          secret:
+            secretName: pod-reddit-monitor-config
+            defaultMode: 0400
+        - name: pod-db-config
+          secret:
+            secretName: pod-db-config
+            defaultMode: 0400
+        - name: pod-db-ssl-client-cert
+          secret:
+            secretName: pod-db-ssl-client-cert
+            defaultMode: 0400
+        - name: pod-db-ssl-client-key
+          secret:
+            secretName: pod-db-ssl-client-key
+            defaultMode: 0400
+        - name: pod-db-ssl-server-ca
+          secret:
+            secretName: pod-db-ssl-server-ca
+            defaultMode: 0400

@@ -1,0 +1,15 @@
+#!/bin/bash
+set -e -o pipefail
+
+VEIL_PATH="/tmp/veil"
+
+cur="$1"
+if [ "$cur" == '' ]; then
+  cur=$(pwd)
+fi
+if [ "${cur:0:9}" == "$VEIL_PATH" ]; then
+  echo "${cur:9}"
+else
+  echo "Directory cannot be unveiled '$cur'." >&2
+  exit 1
+fi

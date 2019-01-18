@@ -1,0 +1,38 @@
+[
+  {
+    "name": "API_HOST",
+    "value": "${var:api_host}"
+  },
+  {
+    "name": "API_PORT",
+    "value": 8000
+  },
+  {
+    "name": "ETHEREUM_MONITOR_HOST",
+    "value": "${var:ethereum_monitor_host}"
+  },
+  {
+    "name": "ETHEREUM_MONITOR_PORT",
+    "value": 8000
+  },
+  {
+    "name": "REDDIT_MONITOR_HOST",
+    "value": "${var:reddit_monitor_host}"
+  },
+  {
+    "name": "REDDIT_MONITOR_PORT",
+    "value": 8000
+  },
+  {
+    "name": "REDDIT_SENDER_HOST",
+    "value": "${var:reddit_sender_host}"
+  },
+  {
+    "name": "REDDIT_SENDER_PORT",
+    "value": 8000
+  },
+  {
+    "name": "DB_NAME",
+    "value": "pod_db"
+  }
+]
