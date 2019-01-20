@@ -73,8 +73,11 @@ if [ "$project_filter" != 'dashboard' ]; then
       $veiled_workspace"
   docker push $base_tag
 
-  # Build base for reddit_sender
-  build_and_push tools/docker/base_images/pod_with_chrome pod_with_chrome
+  if [ "$project_filter" == '' ] \
+      || [ "$project_filter" == 'reddit_sender' ]; then
+    # Build base for reddit_sender
+    build_and_push tools/docker/base_images/pod_with_chrome pod_with_chrome
+  fi
 fi
 
 deploy api

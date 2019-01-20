@@ -1,5 +1,6 @@
 import {
-  ensurePropArray, ensurePropEquals, ensurePropType, ensureType,
+  ensureObject, ensurePropArray, ensurePropEquals, ensurePropObject,
+  ensurePropString,
 } from '../../common/ensure';
 import {RequestParams} from '../../common/net/request_params';
 import {getWithToken, postWithToken} from './request';
@@ -20,12 +21,14 @@ export async function getMessages(
       `https://oauth.reddit.com/message/inbox`,
       params);
   ensurePropEquals(response, 'kind', 'Listing');
-  const data = ensurePropType(response, 'data', 'object');
+  const data = ensurePropObject(response, 'data');
   const children = ensurePropArray(data, 'children');
   const messages: Array<Message> = [];
   for (const child of children) {
-    const c = <Object> ensureType(child, 'object');
-    messages.push(new Message(c));
+    const c = ensureObject(child);
+    if (ensurePropString(c, 'kind') == 't4') {
+      messages.push(new Message(c));
+    }
   }
   return messages;
 }
