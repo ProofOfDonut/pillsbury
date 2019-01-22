@@ -1,7 +1,19 @@
 #!/bin/bash
 set -e -o pipefail
 
+filter=''
+if [ "$1" == '-f' ]; then
+  filter="$2"
+  if [ "$filter" == '' ]; then
+    echo 'Pod name expected.' >&2
+    exit 1
+  fi
+  shift
+  shift
+fi
+
 pods=$(kubectl get pods)
+
 
 if [ "$filter" != '' ]; then
   pods=$(echo "$pods" | grep "$filter")
