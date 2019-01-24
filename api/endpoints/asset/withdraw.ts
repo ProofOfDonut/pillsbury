@@ -1,7 +1,7 @@
 import {Request, Response} from 'express';
 import {parse as parseUrl} from 'url';
 import {
-  ensureEqual, ensurePropObject, ensurePropString, ensureSafeInteger,
+  ensure, ensureEqual, ensurePropObject, ensurePropString, ensureSafeInteger,
 } from '../../../common/ensure';
 import {HttpMethod} from '../../../common/net/http_method';
 import {formatNumber} from '../../../common/numbers/format';
@@ -49,6 +49,13 @@ async function handleAssetWithdraw(
   const assetId = ensureSafeInteger(+ensurePropString(req.params, 'asset_id'));
   const amount = ensureSafeInteger(+ensurePropString(req.params, 'amount'));
   const to = Account.fromJSON(ensurePropObject(req.body, 'to'));
+
+  const erc20WithdrawalsAllowed = await ethereumClient.withdrawalsAllowed();
+  if (to.type == AccountType.ETHEREUM_ADDRESS && !erc20WithdrawalsAllowed) {
+    throw new Error(
+        'ERC-20 withdrawals are currently suspended for all accounts.');
+  }
+
   const withdrawalId = await podDb.withdraw(
       userId,
       to,
@@ -72,6 +79,7 @@ async function handleAssetWithdraw(
     await podDb.updateWithdrawal(withdrawalId, redditId);
     response = {'transaction_id': redditId};
   } else {
+    ensure(erc20WithdrawalsAllowed);
     ensureEqual(to.type, AccountType.ETHEREUM_ADDRESS);
     const contract = await podDb.getAssetContractDetails(assetId, 1);
     const tx = await ethereumClient.getMintTokenTransaction(

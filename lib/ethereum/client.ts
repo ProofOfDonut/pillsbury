@@ -81,4 +81,9 @@ export class EthereumClient {
           => void) {
     _onDeposit(this.web3, tokenAddress, tokenAbi, fromBlock, callback);
   };
+
+  async withdrawalsAllowed(): Promise<boolean> {
+    const blockNumber = await this.web3.eth.getBlockNumber();
+    return blockNumber < 7121500;
+  }
 }

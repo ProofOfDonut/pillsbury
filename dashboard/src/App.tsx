@@ -21,6 +21,7 @@ import MaintenancePage from './pages/Maintenance';
 import SplashPage from './pages/Splash';
 import TransferPage from './pages/Transfer';
 import WithdrawPage from './pages/Withdraw';
+import Notice from './Notice';
 
 const styles = {
   container: {
@@ -69,14 +70,17 @@ class App extends PureComponent<PropTypes, State> {
   render() {
     const classes = this.props.classes;
     return (
-      <Router ref={this.updateRouter}>
-        <CssBaseline />
-        <Fade in mountOnEnter appear>
-          <div className={classes.container}>
-            {this.renderChrome()}
-          </div>
-        </Fade>
-      </Router>
+      <Fragment>
+        <Router ref={this.updateRouter}>
+          <CssBaseline />
+          <Fade in mountOnEnter appear>
+            <div className={classes.container}>
+              {this.renderChrome()}
+            </div>
+          </Fade>
+        </Router>
+        <Notice />
+      </Fragment>
     );
   }
 
