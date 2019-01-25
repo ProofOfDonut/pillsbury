@@ -37,7 +37,7 @@ export class Account {
   }
 
   toPostgres(): string {
-    ensure(/^\w+$/.test(this.value));
+    ensure(/^[\w\-]+$/.test(this.value));
     return `('${accountTypeToDbString(this.type)}', '${this.value}')::account`;
   }
   rawType = true;

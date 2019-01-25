@@ -51,9 +51,10 @@ class Notice extends PureComponent<PropTypes, State> {
         <DialogTitle>Important Notice</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Withdrawals to ERC-20 tokens will be suspended indefinitely
-            beginning with block 7,121,500. For more information, see the
-            announcement at
+            <em>All operations</em> on donut.dance may be suspended
+            indefinitely beginning with block 7,137,700. Any ERC-20 donuts may
+            become permanently uncovertable at this time. For more information,
+            see the announcement at
             {' '}
             <a href="https://www.reddit.com/r/donuttrader/comments/aj6wfm/preparing_for_a_potential_halt_on_donut_transfers/"
               target="_blank">
@@ -80,8 +81,8 @@ class Notice extends PureComponent<PropTypes, State> {
       return (
         <div className={classes.footer}>
           <b>Notice: </b>
-          Withdrawals to ERC-20 tokens will be suspended indefinitely
-          beginning with block 7,121,500.
+          <em>All operations</em> on donut.dance may be suspended
+          indefinitely beginning with block 7,137,700.
           {' \u00a0 '}
           <a href="https://www.reddit.com/r/donuttrader/comments/aj6wfm/preparing_for_a_potential_halt_on_donut_transfers/"
             target="_blank">
