@@ -9,6 +9,8 @@ type PropTypes = {
   depositTokens: ((asset: Asset, amount: number) => void)|null;
   asyncGetAssetBySymbol: (symbol: AssetSymbol) => Promise<Asset>;
   getMetaMaskBalance: (assetId: number) => Promise<number|null>;
+  getDepositId: () => Promise<string>;
+  getContractAddress: () => Promise<string>;
 };
 type State = {
   selectedTab: AccountType;
@@ -40,7 +42,9 @@ class DepositPage extends PureComponent<PropTypes, State> {
       <DepositTokens
           deposit={this.props.depositTokens}
           asyncGetAssetBySymbol={this.props.asyncGetAssetBySymbol}
-          getMetaMaskBalance={this.props.getMetaMaskBalance} />
+          getMetaMaskBalance={this.props.getMetaMaskBalance}
+          getDepositId={this.props.getDepositId}
+          getContractAddress={this.props.getContractAddress} />
     );
   }
 

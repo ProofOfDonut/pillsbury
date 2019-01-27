@@ -58,6 +58,8 @@ type PropTypes = {
   getAvailableErc20Withdrawals: () => number|undefined;
   withdraw: (withdawal: Withdrawal) => Promise<void>;
   defaultWithdrawalAddress: string;
+  getDepositId: () => Promise<string>;
+  getContractAddress: () => Promise<string>;
 };
 type State = {};
 class App extends PureComponent<PropTypes, State> {
@@ -171,7 +173,9 @@ class App extends PureComponent<PropTypes, State> {
       <DepositPage
           depositTokens={this.props.depositTokens}
           asyncGetAssetBySymbol={this.props.asyncGetAssetBySymbol}
-          getMetaMaskBalance={this.props.getMetaMaskBalance} />
+          getMetaMaskBalance={this.props.getMetaMaskBalance}
+          getDepositId={this.props.getDepositId}
+          getContractAddress={this.props.getContractAddress} />
     );
   };
 

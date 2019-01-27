@@ -5,10 +5,10 @@ import ErrorIcon from '@material-ui/icons/Error';
 import React, {PureComponent, ReactNode} from 'react';
 import {ensure} from '../common/ensure';
 import {Asset, AssetSymbol} from '../common/types/Asset';
-import AddressLink from './AddressLink';
 import AmountControls from './AmountControls';
 import MetaMaskNotDetected from './MetaMaskNotDetected';
 import Module, {ModuleStatus} from './Module';
+import DepositTokensAdvanced from './DepositTokensAdvanced';
 
 const styles = (theme: Theme) => ({
   root: {
@@ -36,6 +36,8 @@ type PropTypes = {
   deposit: ((asset: Asset, amount: number) => void)|null;
   asyncGetAssetBySymbol: (symbol: AssetSymbol) => Promise<Asset>;
   getMetaMaskBalance: (assetId: number) => Promise<number|null>;
+  getDepositId: () => Promise<string>;
+  getContractAddress: () => Promise<string>;
 };
 type State = {
   // -1 indicates loading
@@ -61,6 +63,9 @@ class DepositTokens extends PureComponent<PropTypes, State> {
         </Typography>
         <p>You can deposit donuts from your MetaMask account.</p>
         {this.renderAmountControls()}
+        <DepositTokensAdvanced
+            getDepositId={this.props.getDepositId}
+            getContractAddress={this.props.getContractAddress} />
       </Module>
     );
   }

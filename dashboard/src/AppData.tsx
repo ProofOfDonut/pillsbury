@@ -118,7 +118,9 @@ class AppData extends PureComponent<PropTypes, State> {
           depositTokens={this.getTokenDepositer()}
           getAvailableErc20Withdrawals={this.state.getAvailableErc20Withdrawals}
           withdraw={this.withdraw}
-          defaultWithdrawalAddress={this.state.defaultWithdrawalAddress} />
+          defaultWithdrawalAddress={this.state.defaultWithdrawalAddress}
+          getDepositId={() => this.asyncGetDepositId(ensure(this.state.user).id)}
+          getContractAddress={this.tmpAsyncGetDonutContractAddress} />
     );
   }
 
@@ -266,6 +268,11 @@ class AppData extends PureComponent<PropTypes, State> {
       assetsBySymbol: this.state.assetsBySymbol.set(asset.symbol, asset.id),
       getAssetBySymbol: (symbol: AssetSymbol) => this.getAssetBySymbol(symbol),
     }, resolve));
+  };
+
+  private tmpAsyncGetDonutContractAddress = async (): Promise<string> => {
+    const asset = await this.asyncGetAssetBySymbol(AssetSymbol.DONUT);
+    return this.asyncGetAssetContractAddress(asset.id);
   };
 
   private async asyncGetAssetContractAddress(assetId: number): Promise<string> {
