@@ -13,6 +13,7 @@ import {History} from './common/types/History';
 import {User} from './common/types/User';
 import {Withdrawal} from './common/types/Withdrawal';
 import BalancesPage from './pages/Balances';
+import ClosedPage from './pages/Closed/index';
 import DepositPage from './pages/Deposit';
 import ErrorPage from './pages/Error';
 import HistoryPage from './pages/History';
@@ -81,31 +82,31 @@ class App extends PureComponent<PropTypes, State> {
             </div>
           </Fade>
         </Router>
-        <Notice />
       </Fragment>
     );
   }
 
   private renderChrome() {
-    if (!this.props.apiAvailable) {
-      return <MaintenancePage />;
-    }
-    if (this.props.error) {
-      return <ErrorPage error={this.props.error} />;
-    }
-    if (!this.props.initialized) {
-      return <SplashPage />;
-    }
-    if (!this.props.user) {
-      return <LoginPage csrfToken={this.props.csrfToken} />;
-    }
-    return (
-      <Chrome pathname={this.props.pathname}
-              user={this.props.user}
-              logout={this.props.logout}>
-        {this.renderPage()}
-      </Chrome>
-    );
+    return <ClosedPage />;
+    // if (!this.props.apiAvailable) {
+    //   return <MaintenancePage />;
+    // }
+    // if (this.props.error) {
+    //   return <ErrorPage error={this.props.error} />;
+    // }
+    // if (!this.props.initialized) {
+    //   return <SplashPage />;
+    // }
+    // if (!this.props.user) {
+    //   return <LoginPage csrfToken={this.props.csrfToken} />;
+    // }
+    // return (
+    //   <Chrome pathname={this.props.pathname}
+    //           user={this.props.user}
+    //           logout={this.props.logout}>
+    //     {this.renderPage()}
+    //   </Chrome>
+    // );
   }
 
   private renderPage() {
