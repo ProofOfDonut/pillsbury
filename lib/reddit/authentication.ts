@@ -1,15 +1,21 @@
 import {
-  ensurePropEquals, ensurePropString, ensureString,
+  ensurePropEquals, ensurePropNumber, ensurePropString, ensureString,
 } from '../../common/ensure';
 import {Method, request} from '../../common/net/request';
 import {getWithToken} from './request';
+
+export type TokenInfo = {
+  accessToken: string;
+  refreshToken: string;
+  expiration: number;
+};
 
 export async function getTokenWithPassword(
     username: string,
     password: string,
     clientId: string,
     secret: string):
-    Promise<string> {
+    Promise<TokenInfo> {
   const response = await request(
       Method.POST,
       'https://'
@@ -21,10 +27,18 @@ export async function getTokenWithPassword(
       'grant_type=password&username='
           + encodeURIComponent(username)
           + '&password='
-          + encodeURIComponent(password));
+          + encodeURIComponent(password)
+          + '&duration=permanent');
   const info = response.toObject();
-  // TODO: Deal with expiration.
-  return info['access_token'];
+  ensurePropEquals(info, 'token_type', 'bearer');
+  return {
+    accessToken: ensurePropString(info, 'access_token'),
+    refreshToken: ensurePropString(info, 'refresh_token'),
+    expiration:
+        Date.now()
+        + ensurePropNumber(info, 'expires_in') * 1000
+        - 2 * 60 * 1000,
+  };
 }
 
 export async function getTokenWithCode(
@@ -55,7 +69,7 @@ export async function getTokenWithRefreshToken(
     refreshToken: string,
     clientId: string,
     secret: string):
-    Promise<string> {
+    Promise<TokenInfo> {
   const response = await request(
       Method.POST,
       'https://www.reddit.com/api/v1/access_token',
@@ -64,11 +78,15 @@ export async function getTokenWithRefreshToken(
       ]),
       `grant_type=refresh_token&refresh_token=${refreshToken}`);
   const info = response.toObject();
-  console.log(JSON.stringify(info)); // DEBUG
   ensurePropEquals(info, 'token_type', 'bearer');
-  const accessToken = <string> ensurePropString(info, 'access_token');
-  // TODO: Deal with expiration.
-  return accessToken;
+  return {
+    accessToken: ensurePropString(info, 'access_token'),
+    refreshToken,
+    expiration:
+        Date.now()
+        + ensurePropNumber(info, 'expires_in') * 1000
+        - 3 * 60 * 1000,
+  };
 }
 
 function encodeAuthorizationHeader(username: string, password: string): string {

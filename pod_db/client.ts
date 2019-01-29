@@ -215,18 +215,20 @@ export class PodDbClient {
               AND username = ${redditUsername};`);
     const accessToken = ensurePropString(row, 'access_token');
     const refreshToken = ensurePropString(row, 'refresh_token');
-    const accessTokenExpiration = ensurePropDate(row, 'access_token_expiraton');
+    const accessTokenExpiration =
+        ensurePropDate(row, 'access_token_expiration');
     if (Date.now() + 1000 * 60 * 3 >= +accessTokenExpiration) {
-      const newAccessToken = await getTokenWithRefreshToken(
+      const tokenInfo = await getTokenWithRefreshToken(
           refreshToken,
           redditClientId,
           redditSecret);
       await this.pgClient.query`
         UPDATE reddit_accounts
-            SET access_token = ${newAccessToken}
+            SET access_token = ${tokenInfo.accessToken},
+                access_token_expiration = ${new Date(tokenInfo.expiration)}
             WHERE user_id = ${userId}
                 AND username = ${redditUsername};`;
-      return newAccessToken;
+      return tokenInfo.accessToken;
     }
     return accessToken;
   }

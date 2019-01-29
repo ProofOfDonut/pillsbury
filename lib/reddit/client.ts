@@ -1,7 +1,7 @@
-import {ensure} from '../../common/ensure';
+import {ensure, ensurePropString} from '../../common/ensure';
 import {readFile} from '../../common/io/files/read';
 import {
-  getTokenWithPassword,
+  TokenInfo, getTokenWithPassword, getTokenWithRefreshToken,
 } from './authentication';
 import {Message} from './message';
 import {
@@ -13,61 +13,68 @@ import {
   transferDonuts as _transferDonuts,
 } from './wallets';
 
-export class RedditClient {
-  private loadToken: () => Promise<string>|null = null;
-  private tokenPromise: Promise<string>|null = null;
+type Config = {
+  username: string;
+  password: string;
+  clientId: string;
+  secret: string;
+};
 
-  // We delay loading a token until necessary. This helps with development since
-  // we don't require an internet connection if the Reddit API isn't going to be
-  // used.
-  private get token(): Promise<string> {
-    if (this.tokenPromise) {
-      return this.tokenPromise;
-    }
-    let tokenResolve: (token: Promise<string>) => void;
-    this.tokenPromise = new Promise((r: (token: Promise<string>) => void) => {
-      tokenResolve = r;
-    });
-    tokenResolve((async (): Promise<string> => {
-      const loadToken = ensure(this.loadToken);
-      this.loadToken = null;
-      const token = await loadToken.call(this);
-      return token;
-    })());
-    return this.tokenPromise;
-  }
+export async function createRedditClientFromConfigFile(
+    configFile: string):
+    Promise<RedditClient> {
+  const config = JSON.parse(<string> await readFile(configFile, 'utf8'));
+  return new RedditClient(
+      ensurePropString(config, 'username'),
+      ensurePropString(config, 'password'),
+      ensurePropString(config, 'id'),
+      ensurePropString(config, 'secret'));
+}
+
+export class RedditClient {
+  private tokenInfo: TokenInfo|null = null;
+  private config: Config;
 
   constructor(
-      configFileOrUsername: string,
-      password: string = '',
-      id: string = '',
-      secret: string = '') {
-    if (password) {
-      this.loadToken = (): Promise<string> =>
-          getTokenWithPassword(
-              configFileOrUsername, password, id, secret);
-    } else {
-      this.loadToken = (): Promise<string> =>
-          this.getToken(configFileOrUsername);
-    }
+      username: string,
+      password: string,
+      clientId: string,
+      secret: string) {
+    this.config = {username, password, clientId, secret};
   }
 
-  private async getToken(configFile: string): Promise<string> {
-    const config = JSON.parse(<string> await readFile(configFile, 'utf8'));
+  private async getToken(): Promise<string> {
+    if (!this.tokenInfo) {
+      this.tokenInfo = await this.getInitialToken();
+    } else if (this.tokenInfo.expiration <= Date.now() + 3 * 60000) {
+      this.tokenInfo =
+          await this.getTokenWithRefreshToken(this.tokenInfo.refreshToken);
+    }
+    return this.tokenInfo.accessToken;
+  }
+
+  private getInitialToken(): Promise<TokenInfo> {
     return getTokenWithPassword(
-        config['username'],
-        config['password'],
-        config['id'],
-        config['secret']);
+        this.config.username,
+        this.config.password,
+        this.config.clientId,
+        this.config.secret);
+  }
+
+  private getTokenWithRefreshToken(refreshToken: string): Promise<TokenInfo> {
+    return getTokenWithRefreshToken(
+        refreshToken,
+        this.config.clientId,
+        this.config.secret);
   }
 
   async getMessages(sinceMessage: string): Promise<Array<Message>> {
-    return _getMessages(await this.token, sinceMessage);
+    return _getMessages(await this.getToken(), sinceMessage);
   }
 
   async markMessagesRead(ids: string[]): Promise<void> {
     return _markMessagesRead(
-        await this.token,
+        await this.getToken(),
         ids);
   }
 
@@ -77,13 +84,13 @@ export class RedditClient {
       body: string):
       Promise<void> {
     return _sendMessage(
-        await this.token,
+        await this.getToken(),
         to,
         subject,
         body);
   }
 
   async transferDonuts(to: string, amount: number): Promise<string> {
-    return _transferDonuts(await this.token, to, amount);
+    return _transferDonuts(await this.getToken(), to, amount);
   }
 }

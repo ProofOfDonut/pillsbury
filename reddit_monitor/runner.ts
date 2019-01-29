@@ -6,7 +6,7 @@ import {
 } from '../common/ensure';
 import {formatNumber} from '../common/numbers/format';
 import {readFile} from '../common/io/files/read';
-import {RedditClient} from '../lib/reddit';
+import {RedditClient, createRedditClientFromConfigFile} from '../lib/reddit';
 import {PodDbClient, createPodDbClientFromConfigFile} from '../pod_db';
 import {sendRedditDonuts} from '../reddit_sender';
 import {DonutDelivery} from './donut_delivery';
@@ -23,11 +23,13 @@ const dbConfigFile = ensurePropString(args, 'db_config');
 const dbName = ensurePropString(args, 'db_name');
 
 async function main() {
-  const redditClient = new RedditClient(configFile);
-  const podDbClient =
-      await createPodDbClientFromConfigFile(dbConfigFile, dbName);
-  const [redditSenderHost, redditSenderPort] =
-      await getRedditSenderInfo(configFile);
+  const [redditClient, podDbClient, [redditSenderHost, redditSenderPort]]:
+      [RedditClient, PodDbClient, [string, number]] =
+      await Promise.all([
+        createRedditClientFromConfigFile(configFile),
+        createPodDbClientFromConfigFile(dbConfigFile, dbName),
+        getRedditSenderInfo(configFile),
+      ]);
 
   let lastKnownDelivery: string = await podDbClient.getLastDeliveryId();
   while (true) {
