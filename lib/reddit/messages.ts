@@ -22,7 +22,7 @@ export async function getMessages(
       params);
   ensurePropEquals(response, 'kind', 'Listing');
   const data = ensurePropObject(response, 'data');
-  const children = ensurePropArray(data, 'children');
+  const children = ensurePropArray(data, 'children').reverse();
   const messages: Array<Message> = [];
   for (const child of children) {
     const c = ensureObject(child);

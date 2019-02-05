@@ -14,7 +14,8 @@ kubectl delete secrets \
     pod-ethereum-monitor-config \
     pod-ethereum-sender-config \
     pod-reddit-monitor-config \
-    pod-reddit-sender-config \
+    pod-reddit-puppet-config \
+    pod-reddit-refunder-config \
     || true
 
 kubectl create secret generic pod-api-config \
@@ -38,5 +39,7 @@ kubectl create secret generic pod-ethereum-sender-config \
     --from-file=json="$sdir/ethereum_sender.prod.json"
 kubectl create secret generic pod-reddit-monitor-config \
     --from-file=json="$sdir/reddit_monitor.prod.json"
-kubectl create secret generic pod-reddit-sender-config \
-    --from-file=json="$sdir/reddit_sender.prod.json"
+kubectl create secret generic pod-reddit-puppet-config \
+    --from-file=json="$sdir/reddit_puppet.prod.json"
+kubectl create secret generic pod-reddit-refunder-config \
+    --from-file=json="$sdir/reddit_refunder.prod.json"

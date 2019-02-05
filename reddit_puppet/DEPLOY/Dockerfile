@@ -7,4 +7,4 @@ FROM gcr.io/silver-harmony-228021/pod-with-chrome:$image_version
 
 WORKDIR /pod/code
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["/pod/code/reddit_sender/DEPLOY/run.sh"]
+CMD ["/pod/code/reddit_puppet/DEPLOY/run.sh"]

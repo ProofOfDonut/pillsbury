@@ -8,7 +8,7 @@ import {formatNumber} from '../common/numbers/format';
 import {readFile} from '../common/io/files/read';
 import {RedditClient, createRedditClientFromConfigFile} from '../lib/reddit';
 import {PodDbClient, createPodDbClientFromConfigFile} from '../pod_db';
-import {sendRedditDonuts} from '../reddit_sender';
+import {sendRedditDonuts} from '../reddit_puppet';
 import {DonutDelivery} from './donut_delivery';
 import {getInboundDonuts} from './inbound_donuts';
 
@@ -23,23 +23,22 @@ const dbConfigFile = ensurePropString(args, 'db_config');
 const dbName = ensurePropString(args, 'db_name');
 
 async function main() {
-  const [redditClient, podDbClient, [redditSenderHost, redditSenderPort]]:
+  const [redditClient, podDb, [redditPuppetHost, redditPuppetPort]]:
       [RedditClient, PodDbClient, [string, number]] =
       await Promise.all([
         createRedditClientFromConfigFile(configFile),
         createPodDbClientFromConfigFile(dbConfigFile, dbName),
-        getRedditSenderInfo(configFile),
+        getRedditPuppetInfo(configFile),
       ]);
 
-  let lastKnownDelivery: string = await podDbClient.getLastDeliveryId();
+  let lastKnownDelivery: string = await podDb.getLastDeliveryId();
   while (true) {
-    console.log('last delivery:', lastKnownDelivery); // DEBUG
     lastKnownDelivery =
         await checkInboundDeliveries(
             redditClient,
-            podDbClient,
-            redditSenderHost,
-            redditSenderPort,
+            podDb,
+            redditPuppetHost,
+            redditPuppetPort,
             lastKnownDelivery);
     await sleep(15000);
   }
@@ -47,30 +46,27 @@ async function main() {
 
 async function checkInboundDeliveries(
     redditClient: RedditClient,
-    podDbClient: PodDbClient,
-    redditSenderHost: string,
-    redditSenderPort: number,
+    podDb: PodDbClient,
+    redditPuppetHost: string,
+    redditPuppetPort: number,
     lastKnownDelivery: string):
     Promise<string> {
-  console.log('--- getInboundDonuts'); // DEBUG
   const deliveries = await getInboundDonuts(redditClient, lastKnownDelivery);
   if (deliveries.length > 0) {
-    console.log('--- addInboundDeliveries'); // DEBUG
     const successfulDeliveries =
-        await podDbClient.addInboundDeliveries(deliveries);
+        await podDb.addInboundDeliveries(deliveries);
     // The cient doesn't care whether messages are marked as read or not. It
     // always retrieved based on the last message it has in the database.
     // However, we mark them as read here to make it easier for a human to sign
     // into the account and check other messages the client isn't interested in.
     if (successfulDeliveries.length > 0) {
-      console.log('--- markMessagesRead'); // DEBUG
       await redditClient.markMessagesRead(
           successfulDeliveries.map(u => u.delivery.id));
-      console.log('--- notifyOfReceivedDeliveries'); // DEBUG
       await notifyOfReceivedDeliveries(
           redditClient,
-          redditSenderHost,
-          redditSenderPort,
+          podDb,
+          redditPuppetHost,
+          redditPuppetPort,
           successfulDeliveries);
     }
     return deliveries[0].id;
@@ -80,8 +76,9 @@ async function checkInboundDeliveries(
 
 async function notifyOfReceivedDeliveries(
     redditClient: RedditClient,
-    redditSenderHost: string,
-    redditSenderPort: number,
+    podDb: PodDbClient,
+    redditPuppetHost: string,
+    redditPuppetPort: number,
     deliveries: DonutReceipt[]):
     Promise<void> {
   const promises: Promise<void>[] = [];
@@ -97,24 +94,43 @@ async function notifyOfReceivedDeliveries(
             acc + u.returnAmount,
         0);
     const formattedAmount = formatNumber(amount);
+    const formattedAmountWithUnit =
+        amount == 1 ? `${formattedAmount} donut` : `${formattedAmount} donuts`;
     const formattedReturnTotal = formatNumber(returnTotal);
+    const formattedReturnTotalWithUnit =
+        returnTotal == 1
+            ? `${formattedReturnTotal} donut`
+            : `${formattedReturnTotal} donuts`;
+    const deliveriesEnabled = amount > 0 || await podDb.deliveriesEnabled();
     const extraInfo =
         returnTotal > 0
-        ? `\n\n${formattedReturnTotal} donuts are being returned to you `
+        ? `\n\n${formattedReturnTotalWithUnit} are being returned to you `
             + 'because you deposited in excess of the deposit limit.'
         : '';
-    promises.push(
-        redditClient.sendMessage(
-            from,
-            'Credited donuts',
-            `Your account has been credited with ${formattedAmount} donuts. `
-            + `For more information see https://donut.dance`
-            + extraInfo));
+    if (deliveriesEnabled) {
+      promises.push(
+          redditClient.sendMessage(
+              from,
+              'Deposited donuts',
+              `Your account has been credited with ${formattedAmountWithUnit}. `
+              + `For more information see https://donut.dance`
+              + extraInfo));
+    } else {
+      promises.push(
+          redditClient.sendMessage(
+              from,
+              'Deposited donuts',
+              `You attempted to deposit ${formattedReturnTotalWithUnit} but `
+                  + 'the bridge is currently closed. Your '
+                  + (returnTotal == 1 ? 'donut has ' : 'donuts have ')
+                  + 'been returned.'));
+    }
     if (returnTotal > 0) {
       promises.push(
           sendRedditDonuts(
-              redditSenderHost,
-              redditSenderPort,
+              podDb,
+              redditPuppetHost,
+              redditPuppetPort,
               from,
               returnTotal));
     }
@@ -139,14 +155,14 @@ function groupDeliveriesBySource(
   return [...groups.values()];
 }
 
-async function getRedditSenderInfo(
+async function getRedditPuppetInfo(
     configFile: string):
     Promise<[string, number]> {
   const info = JSON.parse(<string> await readFile(configFile, 'utf8'));
-  const redditSenderConfig = ensurePropObject(info, 'reddit-sender');
+  const redditPuppetConfig = ensurePropObject(info, 'reddit-puppet');
   return [
-    ensurePropString(redditSenderConfig, 'host'),
-    ensurePropNumber(redditSenderConfig, 'port'),
+    ensurePropString(redditPuppetConfig, 'host'),
+    ensurePropNumber(redditPuppetConfig, 'port'),
   ];
 }
 

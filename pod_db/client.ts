@@ -5,6 +5,7 @@ import {
   ensureObject,
   ensurePropDate,
   ensurePropNumber,
+  ensurePropObject,
   ensurePropSafeInteger,
   ensurePropString,
   ensureSafeInteger,
@@ -382,10 +383,57 @@ export class PodDbClient {
     return ensurePropNumber(row, 'get_available_erc20_withdrawals');
   };
 
+  // TODO: Remove? I think this is unused.
   async getNextNonce(address: string): Promise<number> {
     const row = this.ensureOne(await this.pgClient.query`
       SELECT get_next_nonce(${address});`);
     return ensurePropNumber(row, 'get_next_nonce');
+  }
+
+  async getNextRefund(
+      assetId: number):
+      Promise<{username: string, amount: number}|null> {
+    const rows = await this.pgClient.query`
+      SELECT to_json(get_next_refund(${assetId}));`;
+    if (rows.length == 0) {
+      return null;
+    }
+    const row = this.ensureOne(rows);
+    const refund = ensurePropObject(row, 'to_json');
+    return {
+      username: ensurePropString(refund, 'username'),
+      amount: ensurePropNumber(refund, 'amount'),
+    };
+  }
+
+  async getRedditHubBearerToken(): Promise<string> {
+    const row = this.ensureOne(await this.pgClient.query`
+      SELECT value
+          FROM vars
+          WHERE key = 'reddit_hub_bearer_token';`);
+    return ensurePropString(row, 'value');
+  }
+
+  async setRedditHubBearerToken(token: string) {
+    await this.pgClient.query`
+      UPDATE vars
+          SET value = ${token}
+          WHERE key = 'reddit_hub_bearer_token';`;
+  }
+
+  async deliveriesEnabled(): Promise<boolean> {
+    const row = this.ensureOne(await this.pgClient.query`
+      SELECT value
+          FROM vars
+          WHERE key = 'deliveries_enabled';`);
+    const value = ensurePropString(row, 'value');
+    if (value == 'true') {
+      return true;
+    }
+    if (value == 'false') {
+      return false;
+    }
+    throw new Error(`Unexpected deliveries_enabled value "${value}".`);
   }
 
   private ensureOne(rows: any): Object {

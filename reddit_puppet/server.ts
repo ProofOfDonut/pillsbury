@@ -10,12 +10,15 @@ import {
   ensureSafeInteger,
 } from '../common/ensure';
 import {readFile} from '../common/io/files/read';
+import {PodDbClient} from '../pod_db';
 import {RedditSenderEngine, createRedditSenderEngine} from './engine';
 
-export async function createRedditSenderServer(configFile: string) {
+export async function createRedditSenderServer(
+    configFile: string,
+    podDb: PodDbClient) {
   const config = await readConfig(configFile);
   const engine =
-      await createRedditSenderEngine(config.username, config.password);
+      await createRedditSenderEngine(config.username, config.password, podDb);
   const app = await initExpress(config.host, config.port);
   return new RedditSenderServer(engine, app, config.port);
 }
@@ -38,21 +41,36 @@ export class RedditSenderServer {
         // ensure the recipient actually does have that many donuts in his
         // account.
         await this.engine.sendDonuts(recipient, amount);
+        res.end();
       } catch (err) {
-        console.error(
-            '---- '
-            + new Date().toLocaleString('en-US', {timeZone: 'America/New_York'})
-            + ' ----');
-        console.error(`When sending ${amount} donuts to ${recipient}:`);
-        console.error(err ? err.stack || err.message || err : err);
-        res.status(500).type('json').end(JSON.stringify({
-          message: err && err.message,
-          stack: err && err.stack,
-        }));
-        return;
+        this.handleError(
+            res, err, `When sending ${amount} donuts to ${recipient}`);
       }
-      res.end();
     });
+
+    this.app.post(
+        '/update-reddit-hub-bearer-token',
+        async (req: Request, res: Response) => {
+      try {
+        await this.engine.updateRedditHubBearerToken();
+        res.end();
+      } catch (err) {
+        this.handleError(res, err, 'When updating Reddit hub bearer token');
+      }
+    });
+  }
+
+  private handleError(res: Response, err: Error, detail: string) {
+    console.error(
+        '---- '
+        + new Date().toLocaleString('en-US', {timeZone: 'America/New_York'})
+        + ' ----');
+    console.error(detail);
+    console.error(err ? err.stack || err.message || err : err);
+    res.status(500).type('json').end(JSON.stringify({
+      message: err && err.message,
+      stack: err && err.stack,
+    }));
   }
 }
 

@@ -10,7 +10,7 @@ import {Account, AccountType} from '../../../common/types/Account';
 import {EthereumClient} from '../../../lib/ethereum';
 import {RedditClient} from '../../../lib/reddit';
 import {PodDbClient} from '../../../pod_db';
-import {sendRedditDonuts} from '../../../reddit_sender';
+import {sendRedditDonuts} from '../../../reddit_puppet';
 import {ApiServer} from '../../server';
 import {requireUserId} from '../../user';
 
@@ -18,8 +18,8 @@ export function routeAssetWithdraw(
       apiServer: ApiServer,
       podDb: PodDbClient,
       redditClient: RedditClient,
-      redditSenderHost: string,
-      redditSenderPort: number) {
+      redditPuppetHost: string,
+      redditPuppetPort: number) {
   apiServer.addListener(
       HttpMethod.POST,
       '/asset::asset_id/withdraw::amount',
@@ -28,8 +28,8 @@ export function routeAssetWithdraw(
         await handleAssetWithdraw(
             podDb,
             redditClient,
-            redditSenderHost,
-            redditSenderPort,
+            redditPuppetHost,
+            redditPuppetPort,
             apiServerConfig.ethereumClient,
             req,
             res);
@@ -39,8 +39,8 @@ export function routeAssetWithdraw(
 async function handleAssetWithdraw(
     podDb: PodDbClient,
     redditClient: RedditClient,
-    redditSenderHost: string,
-    redditSenderPort: number,
+    redditPuppetHost: string,
+    redditPuppetPort: number,
     ethereumClient: EthereumClient,
     req: Request,
     res: Response):
@@ -68,7 +68,7 @@ async function handleAssetWithdraw(
     // send an error message for some reason even though the donuts are actually
     // sent.
     await sendRedditDonuts(
-        redditSenderHost, redditSenderPort, to.value, amount);
+        podDb, redditPuppetHost, redditPuppetPort, to.value, amount);
     const formattedAmount = formatNumber(amount);
     await redditClient.sendMessage(
         to.value,

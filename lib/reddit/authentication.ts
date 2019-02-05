@@ -27,13 +27,12 @@ export async function getTokenWithPassword(
       'grant_type=password&username='
           + encodeURIComponent(username)
           + '&password='
-          + encodeURIComponent(password)
-          + '&duration=permanent');
+          + encodeURIComponent(password));
   const info = response.toObject();
   ensurePropEquals(info, 'token_type', 'bearer');
   return {
     accessToken: ensurePropString(info, 'access_token'),
-    refreshToken: ensurePropString(info, 'refresh_token'),
+    refreshToken: '',
     expiration:
         Date.now()
         + ensurePropNumber(info, 'expires_in') * 1000

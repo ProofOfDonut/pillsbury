@@ -1,25 +1,25 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pod-reddit-sender
+  name: pod-reddit-puppet
 spec:
   replicas: 3
   selector:
     matchLabels:
-      name: pod-reddit-sender
+      name: pod-reddit-puppet
   template:
     metadata:
       labels:
-        name: pod-reddit-sender
+        name: pod-reddit-puppet
     spec:
       containers:
-        - name: pod-reddit-sender
-          image: gcr.io/silver-harmony-228021/reddit-sender:$image_version
+        - name: pod-reddit-puppet
+          image: gcr.io/silver-harmony-228021/reddit-puppet:$image_version
           ports:
             - containerPort: 8000
           volumeMounts:
-            - name: pod-reddit-sender-config
-              mountPath: /pod/config/reddit-sender
+            - name: pod-reddit-puppet-config
+              mountPath: /pod/config/reddit-puppet
             - name: pod-db-config
               mountPath: /pod/config/db
             - name: pod-db-ssl-client-cert
@@ -31,16 +31,16 @@ spec:
           env:
             - name: NODE_ENV
               value: production
-            - name: REDDIT_SENDER_CONFIG
-              value: "/pod/config/reddit-sender/json"
+            - name: REDDIT_PUPPET_CONFIG
+              value: "/pod/config/reddit-puppet/json"
             - name: DB_CONFIG
               value: "/pod/config/db/json"
             - name: DB_NAME
               value: "pod"
       volumes:
-        - name: pod-reddit-sender-config
+        - name: pod-reddit-puppet-config
           secret:
-            secretName: pod-reddit-sender-config
+            secretName: pod-reddit-puppet-config
             defaultMode: 0400
         - name: pod-db-config
           secret:

@@ -1,7 +1,7 @@
 import * as minimist from 'minimist';
 import {join} from 'path';
 import {ensurePropString} from '../common/ensure';
-import {PodDbClient, createPodDbClientFromConfigFile} from '../pod_db';
+import {createPodDbClientFromConfigFile} from '../pod_db';
 import {ApiServer} from './server';
 import {routeAsset} from './endpoints/asset';
 import {routeAssetContract} from './endpoints/asset/contract';
@@ -38,8 +38,8 @@ async function main() {
       apiServer,
       podDb,
       apiConfig.redditClient,
-      apiConfig.redditSenderHost,
-      apiConfig.redditSenderPort);
+      apiConfig.redditPuppetHost,
+      apiConfig.redditPuppetPort);
   routeRedditLogin(apiServer, podDb);
   routeUserAvailableErc20Withdrawals(apiServer, podDb);
   routeUserBalances(apiServer, podDb);

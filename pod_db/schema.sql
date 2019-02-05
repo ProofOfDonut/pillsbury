@@ -324,6 +324,42 @@ END; $_$;
 ALTER FUNCTION public.get_next_nonce(_address public.citext) OWNER TO pod_admin;
 
 --
+-- Name: get_next_refund(integer); Type: FUNCTION; Schema: public; Owner: pod_admin
+--
+
+CREATE FUNCTION public.get_next_refund(_asset_id integer) RETURNS TABLE(username text, amount integer)
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  _user_id int;
+  _username text;
+  _amount int;
+BEGIN
+  SELECT b.user_id, ra.username, b.balance
+      INTO _user_id, _username, _amount
+      FROM balances b
+      INNER JOIN reddit_accounts ra ON ra.user_id = b.user_id
+      WHERE b.balance IS NOT NULL AND b.balance > 0
+          AND b.asset_id = _asset_id;
+
+  IF _user_id IS NULL THEN
+    RETURN;
+  END IF;
+
+  UPDATE balances
+      SET balance = 0
+      WHERE user_id = _user_id
+          AND asset_id = _asset_id;
+
+  INSERT INTO refunds (user_id, amount) VALUES (_user_id, _amount);
+
+  RETURN QUERY SELECT _username, _amount;
+END; $$;
+
+
+ALTER FUNCTION public.get_next_refund(_asset_id integer) OWNER TO pod_admin;
+
+--
 -- Name: get_or_create_user_for_reddit_account(text); Type: FUNCTION; Schema: public; Owner: pod_admin
 --
 
@@ -750,6 +786,19 @@ CREATE TABLE public.reddit_accounts (
 ALTER TABLE public.reddit_accounts OWNER TO pod_admin;
 
 --
+-- Name: refunds; Type: TABLE; Schema: public; Owner: pod_admin
+--
+
+CREATE TABLE public.refunds (
+    user_id integer,
+    amount integer,
+    refund_time timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.refunds OWNER TO pod_admin;
+
+--
 -- Name: sessions; Type: TABLE; Schema: public; Owner: pod_admin
 --
 
@@ -772,7 +821,7 @@ CREATE TABLE public.users (
     id integer NOT NULL,
     creation_time timestamp with time zone DEFAULT now() NOT NULL,
     public_id public.citext DEFAULT ('0x00000000'::text || replace((public.uuid_generate_v4())::text, '-'::text, ''::text)) NOT NULL,
-    erc20_withdrawal_limit integer DEFAULT 5 NOT NULL,
+    erc20_withdrawal_limit integer DEFAULT 10 NOT NULL,
     CONSTRAINT users_public_id_check CHECK (public.is_valid_public_id((public_id)::text))
 );
 
@@ -1143,4 +1192,3 @@ ALTER TABLE ONLY public.withdrawals
 --
 -- PostgreSQL database dump complete
 --
-

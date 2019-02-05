@@ -30,8 +30,8 @@ type Config = {
   dashboardUrl: string;
   secureCookies: boolean;
   redditClient: RedditClient;
-  redditSenderHost: string;
-  redditSenderPort: number;
+  redditPuppetHost: string;
+  redditPuppetPort: number;
   ethereumClient: EthereumClient;
 };
 export class ApiServer {
@@ -100,11 +100,11 @@ export class ApiServer {
     const redditHubPassword = ensurePropString(redditHubConfig, 'password');
     const redditHubId = ensurePropString(redditHubConfig, 'id');
     const redditHubSecret = ensurePropString(redditHubConfig, 'secret');
-    const redditSenderConfig = ensurePropObject(config, 'reddit-sender');
-    const redditSenderHost =
-        ensurePropString(redditSenderConfig, 'host');
-    const redditSenderPort =
-        ensurePropSafeInteger(redditSenderConfig, 'port');
+    const redditPuppetConfig = ensurePropObject(config, 'reddit-puppet');
+    const redditPuppetHost =
+        ensurePropString(redditPuppetConfig, 'host');
+    const redditPuppetPort =
+        ensurePropSafeInteger(redditPuppetConfig, 'port');
     const ethereumClientConfig = ensurePropObject(config, 'ethereum-client');
 
     configResolve({
@@ -115,8 +115,8 @@ export class ApiServer {
       secureCookies,
       redditClient: new RedditClient(
           redditHubUsername, redditHubPassword, redditHubId, redditHubSecret),
-      redditSenderHost,
-      redditSenderPort,
+      redditPuppetHost,
+      redditPuppetPort,
       ethereumClient: createEthereumClient(
           ensurePropString(ethereumClientConfig, 'host'),
           masterKey,

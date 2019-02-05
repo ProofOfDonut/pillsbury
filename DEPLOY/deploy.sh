@@ -13,16 +13,9 @@ repo='gcr.io/silver-harmony-228021'
 base_tag="$repo/pod:$version"
 veiled_workspace=$(bin/veil pwd)
 
-bin/veil -u
-if [ "$project_filter" != 'dashboard' ]; then
-  bin/veil "tsc"
-fi
-if [ "$project_filter" == '' ] || [ "$project_filter" == 'dashboard' ]; then
-  dashboard/BUILD/build.sh
-fi
-
 function deploy() {
   local project="$1"
+  local type="$2"
   if [ "$project" == '' ]; then
     echo 'Missing project parameter' >&2
     exit 1
@@ -35,10 +28,16 @@ function deploy() {
   echo "Deploying $project..."
 
   build_and_push "$project/DEPLOY" "$project"
+
+  if [ "$type" == '' ]; then
+    yaml='deployment.yaml'
+  else
+    yaml="$type.yaml"
+  fi
   bin/veil "sed 's/\$image_version/$version/g' \
-      < $project/DEPLOY/deployment.yaml \
-      > $project/DEPLOY/deployment.yaml.out"
-  bin/veil "kubectl apply -f $project/DEPLOY/deployment.yaml.out"
+      < $project/DEPLOY/$yaml \
+      > $project/DEPLOY/$yaml.out"
+  bin/veil "kubectl apply -f $project/DEPLOY/$yaml.out"
 }
 
 function build_and_push() {
@@ -65,6 +64,28 @@ function build_and_push() {
   docker push $tag
 }
 
+function check_continue() {
+  local prompt="$1"
+  local yn=''
+
+  read -p "$prompt " yn
+  if [[ ! "${yn:0:1}" =~ ^[Yy]$ ]]; then
+    exit 1
+  fi
+}
+
+if [ "$project_filter" == 'reddit_refunder' ]; then
+  check_continue 'Are you sure you want to issue refunds? [y/N]'
+fi
+
+bin/veil -u
+if [ "$project_filter" != 'dashboard' ]; then
+  bin/veil "tsc"
+fi
+if [ "$project_filter" == '' ] || [ "$project_filter" == 'dashboard' ]; then
+  dashboard/BUILD/build.sh
+fi
+
 if [ "$project_filter" != 'dashboard' ]; then
   # Build project base
   bin/veil "docker build \
@@ -74,8 +95,8 @@ if [ "$project_filter" != 'dashboard' ]; then
   docker push $base_tag
 
   if [ "$project_filter" == '' ] \
-      || [ "$project_filter" == 'reddit_sender' ]; then
-    # Build base for reddit_sender
+      || [ "$project_filter" == 'reddit_puppet' ]; then
+    # Build base for reddit_puppet
     build_and_push tools/docker/base_images/pod_with_chrome pod_with_chrome
   fi
 fi
@@ -85,4 +106,9 @@ deploy dashboard
 deploy ethereum_monitor
 deploy ethereum_sender
 deploy reddit_monitor
-deploy reddit_sender
+deploy reddit_puppet
+
+# Only deploy reddit_refunder if it was specified.
+if [ "$project_filter" == 'reddit_refunder' ]; then
+  deploy reddit_refunder job
+fi

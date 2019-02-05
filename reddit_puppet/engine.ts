@@ -2,12 +2,18 @@ import {exec} from 'child_process';
 import {join} from 'path';
 import * as puppeteer from 'puppeteer';
 import {Browser, ElementHandle, Page} from 'puppeteer';
-import {ensure, ensureEqual, ensureSafeInteger} from '../common/ensure';
+import {
+  ensure, ensureEqual, ensurePropString, ensureSafeInteger, ensureString,
+} from '../common/ensure';
+import {PodDbClient} from '../pod_db';
 
 // This may not be needed. At one point we had trouble signing in and it was
 // thought multiple attempts might help, but since then I think those problems
 // have been resolved.
 const SIGN_IN_ATTEMPTS = 2;
+const SUBREDDIT_ID = 't5_37jgj';
+const BEARER_INTERCEPT_URL =
+    `https://meta-api.reddit.com/ratings/${SUBREDDIT_ID}/points-weekly`;
 
 const TMP_DIR = new Promise(
     (resolve: (dir: string) => void,
@@ -26,7 +32,8 @@ const TMP_DIR = new Promise(
 
 export async function createRedditSenderEngine(
     username: string,
-    password: string):
+    password: string,
+    podDb: PodDbClient):
     Promise<RedditSenderEngine> {
   const browser = await puppeteer.launch({
     'args': ['--no-sandbox'],
@@ -37,38 +44,89 @@ export async function createRedditSenderEngine(
       'height': 800,
     },
   });
-  return new RedditSenderEngine(browser, username, password);
+  return new RedditSenderEngine(browser, username, password, podDb);
 }
 
 export class RedditSenderEngine {
   private browser: Browser;
   private hubUsername: string;
   private hubPassword: string;
+  private podDb: PodDbClient;
 
-  constructor(browser: Browser, username: string, password: string) {
+  constructor(
+      browser: Browser,
+      username: string,
+      password: string,
+      podDb: PodDbClient) {
     this.browser = browser;
     this.hubUsername = username;
     this.hubPassword = password;
+    this.podDb = podDb;
   }
 
   async close() {
     await this.browser.close();
   }
 
+  // It should be safe to expose `getRedditHubBearerToken` as an endpoint but to
+  // be a little more on the safe side let's just expose an endpoint which
+  // updates it in the database.
+  async updateRedditHubBearerToken() {
+    const token = await this.withPage(
+        (page: Page) => this.getRedditHubBearerToken(page));
+    await this.podDb.setRedditHubBearerToken(token);
+  }
+
+  private getRedditHubBearerToken(page: Page): Promise<string> {
+    return new Promise<string>(
+        async (resolve: (token: string) => void,
+               reject: (err: Error) => void) => {
+      try {
+        let resolved = false;
+        let tm: NodeJS.Timeout|null;
+        await page.setRequestInterception(true);
+        page.on('request', request => {
+          try {
+            if (request.method().toUpperCase() == 'GET'
+                && request.url() == BEARER_INTERCEPT_URL) {
+              const auth = ensurePropString(request.headers(), 'authorization');
+              const groups = /^bearer ([\w\-\.]+)$/i.exec(auth);
+              ensure(groups, `Unrecognized authorization header "${auth}".`);
+              resolved = true;
+              if (tm) {
+                clearTimeout(tm);
+              }
+              resolve(groups[1]);
+            }
+          } catch (err) {
+            reject(err);
+          }
+          request.continue();
+        });
+        await this.goToEthTraderLoggedIn(page);
+        tm = setTimeout(() => {
+          if (!resolved) {
+            reject(new Error('Timed out waiting for bearer intercept URL.'));
+          }
+        }, 60000);
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
   async sendDonuts(recipient: string, amount: number) {
+    // Reddit usernames can currently be 3 to 20 characters long. We'll allow 1
+    // to 30 characters in case this changes.
+    ensure(
+        /^[\w\-]{1,30}$/.test(recipient),
+        `Invalid recipient "${recipient}".`);
     ensureSafeInteger(amount);
-    const page = await this.browser.newPage();
-    try {
+
+    await this.withPage(async (page: Page) => {
       await this.goToEthTraderLoggedIn(page);
       await this.sendDonutsInner(page, recipient, amount);
-    } catch (err) {
-      const ssPath = join(await TMP_DIR, 'ss_on_error.png');
-      await page.screenshot({'path': ssPath});
-      console.log(`Saved screenshot to ${ssPath}`);
-      throw err;
-    } finally {
-      await page.close();
-    }
+    });
   }
 
   private async goToEthTraderLoggedIn(page: Page) {
@@ -198,5 +256,21 @@ export class RedditSenderEngine {
 
   private async sleep(interval: number) {
     await new Promise(resolve => setTimeout(resolve, interval));
+  }
+
+  private async withPage<T>(callback: (page: Page) => Promise<T>) {
+    const page = await this.browser.newPage();
+    try {
+      // Note: `await` is needed below! It is not redundant! Without it the
+      // `try`/`catch` will be ignored.
+      return await callback(page);
+    } catch (err) {
+      const ssPath = join(await TMP_DIR, 'ss_on_error.png');
+      await page.screenshot({'path': ssPath});
+      console.log(`Saved screenshot to ${ssPath}`);
+      throw err;
+    } finally {
+      await page.close();
+    }
   }
 }

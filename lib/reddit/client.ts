@@ -47,8 +47,12 @@ export class RedditClient {
     if (!this.tokenInfo) {
       this.tokenInfo = await this.getInitialToken();
     } else if (this.tokenInfo.expiration <= Date.now() + 3 * 60000) {
-      this.tokenInfo =
-          await this.getTokenWithRefreshToken(this.tokenInfo.refreshToken);
+      if (this.tokenInfo.refreshToken) {
+        this.tokenInfo =
+            await this.getTokenWithRefreshToken(this.tokenInfo.refreshToken);
+      } else {
+        this.tokenInfo = await this.getInitialToken();
+      }
     }
     return this.tokenInfo.accessToken;
   }
