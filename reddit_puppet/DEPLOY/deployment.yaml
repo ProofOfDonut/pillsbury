@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: pod-reddit-puppet
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       name: pod-reddit-puppet
