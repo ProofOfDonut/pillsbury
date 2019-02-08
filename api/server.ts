@@ -15,7 +15,7 @@ import {readFile} from '../common/io/files/read';
 import {HttpMethod} from '../common/net/http_method';
 import {EthereumClient, createEthereumClient} from '../lib/ethereum';
 import {RedditClient} from '../lib/reddit';
-import {PodDbClient} from '../pod_db';
+import {GlazeDbClient} from '../glaze_db';
 import {checkCsrfToken} from './csrf';
 import {getHeader} from './request';
 
@@ -39,14 +39,14 @@ export class ApiServer {
   config: Promise<Config>;
 
   private app: Promise<Application>;
-  private podDb: PodDbClient;
+  private glazeDb: GlazeDbClient;
 
   constructor(
       configFile: string,
       masterKeyFile: string,
       masterKeyPwFile: string,
-      podDb: PodDbClient) {
-    this.podDb = podDb;
+      glazeDb: GlazeDbClient) {
+    this.glazeDb = glazeDb;
     let readyResolve: (value: Ready) => void;
     let configResolve: (value: Config) => void;
     this.ready = new Promise((resolve: (value: Ready) => void) => {
@@ -199,7 +199,7 @@ export class ApiServer {
         async (req: Request, res: Response) => {
       try {
         if (doCsrfTokenCheck) {
-          await checkCsrfToken(req, this.podDb);
+          await checkCsrfToken(req, this.glazeDb);
         }
         await callback(req, res);
       } catch (e) {

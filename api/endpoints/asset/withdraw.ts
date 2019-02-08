@@ -7,16 +7,16 @@ import {HttpMethod} from '../../../common/net/http_method';
 import {formatNumber} from '../../../common/numbers/format';
 import {AssetSymbol, assetSymbolFromString} from '../../../common/types/Asset';
 import {Account, AccountType} from '../../../common/types/Account';
+import {GlazeDbClient} from '../../../glaze_db';
 import {EthereumClient} from '../../../lib/ethereum';
 import {RedditClient} from '../../../lib/reddit';
-import {PodDbClient} from '../../../pod_db';
 import {sendRedditDonuts} from '../../../reddit_puppet';
 import {ApiServer} from '../../server';
 import {requireUserId} from '../../user';
 
 export function routeAssetWithdraw(
       apiServer: ApiServer,
-      podDb: PodDbClient,
+      glazeDb: GlazeDbClient,
       redditClient: RedditClient,
       redditPuppetHost: string,
       redditPuppetPort: number) {
@@ -26,7 +26,7 @@ export function routeAssetWithdraw(
       async (req: Request, res: Response) => {
         const apiServerConfig = await apiServer.config;
         await handleAssetWithdraw(
-            podDb,
+            glazeDb,
             redditClient,
             redditPuppetHost,
             redditPuppetPort,
@@ -37,7 +37,7 @@ export function routeAssetWithdraw(
 }
 
 async function handleAssetWithdraw(
-    podDb: PodDbClient,
+    glazeDb: GlazeDbClient,
     redditClient: RedditClient,
     redditPuppetHost: string,
     redditPuppetPort: number,
@@ -45,7 +45,7 @@ async function handleAssetWithdraw(
     req: Request,
     res: Response):
     Promise<void> {
-  const userId = await requireUserId(req, podDb);
+  const userId = await requireUserId(req, glazeDb);
   const assetId = ensureSafeInteger(+ensurePropString(req.params, 'asset_id'));
   const amount = ensureSafeInteger(+ensurePropString(req.params, 'amount'));
   const to = Account.fromJSON(ensurePropObject(req.body, 'to'));
@@ -56,19 +56,19 @@ async function handleAssetWithdraw(
         'ERC-20 withdrawals are currently suspended for all accounts.');
   }
 
-  const withdrawalId = await podDb.withdraw(
+  const withdrawalId = await glazeDb.withdraw(
       userId,
       to,
       assetId,
       amount);
   let response: Object = {};
   if (to.type == AccountType.REDDIT_USER) {
-    ensureEqual((await podDb.getAsset(assetId)).symbol, AssetSymbol.DONUT);
+    ensureEqual((await glazeDb.getAsset(assetId)).symbol, AssetSymbol.DONUT);
     // If this fails, we still want to withdraw from the DB since Reddit might
     // send an error message for some reason even though the donuts are actually
     // sent.
     await sendRedditDonuts(
-        podDb, redditPuppetHost, redditPuppetPort, to.value, amount);
+        glazeDb, redditPuppetHost, redditPuppetPort, to.value, amount);
     const formattedAmount = formatNumber(amount);
     await redditClient.sendMessage(
         to.value,
@@ -76,19 +76,19 @@ async function handleAssetWithdraw(
         `You have withdrawn ${formattedAmount} donuts to your Reddit account.`);
     // TODO: Retrieve reddit ID.
     const redditId = '';
-    await podDb.updateWithdrawal(withdrawalId, redditId);
+    await glazeDb.updateWithdrawal(withdrawalId, redditId);
     response = {'transaction_id': redditId};
   } else {
     ensure(erc20WithdrawalsAllowed);
     ensureEqual(to.type, AccountType.ETHEREUM_ADDRESS);
-    const contract = await podDb.getAssetContractDetails(assetId, 1);
+    const contract = await glazeDb.getAssetContractDetails(assetId, 1);
     const tx = await ethereumClient.getMintTokenTransaction(
         contract.address,
         contract.abi,
         to.value,
         amount);
-    const queuedTransactionId = await podDb.enqueueTransaction(tx);
-    await podDb.updateWithdrawal(withdrawalId, queuedTransactionId);
+    const queuedTransactionId = await glazeDb.enqueueTransaction(tx);
+    await glazeDb.updateWithdrawal(withdrawalId, queuedTransactionId);
     response = {'transaction_id': queuedTransactionId};
   }
   res

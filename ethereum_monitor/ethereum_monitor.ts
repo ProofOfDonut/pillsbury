@@ -4,17 +4,17 @@ import {
 import {readFile} from '../common/io/files/read';
 import {AssetSymbol} from '../common/types/Asset';
 import {EthereumClient, createEthereumClient} from '../lib/ethereum';
-import {PodDbClient} from '../pod_db';
+import {GlazeDbClient} from '../glaze_db';
 
 export async function createEthereumMonitor(
     configFile: string,
-    podDb: PodDbClient):
+    glazeDb: GlazeDbClient):
     Promise<EthereumMonitor> {
-  const asset = await podDb.getAssetBySymbol(AssetSymbol.DONUT);
-  const contract = await podDb.getAssetContractDetails(asset.id, 1);
+  const asset = await glazeDb.getAssetBySymbol(AssetSymbol.DONUT);
+  const contract = await glazeDb.getAssetContractDetails(asset.id, 1);
   return new EthereumMonitor(
       await readConfig(configFile),
-      podDb,
+      glazeDb,
       asset.id,
       contract.address,
       contract.abi);
@@ -23,24 +23,24 @@ export async function createEthereumMonitor(
 export class EthereumMonitor {
   private config: Config;
   private ethereumClient: EthereumClient;
-  private podDb: PodDbClient;
+  private glazeDb: GlazeDbClient;
 
   constructor(
       config: Config,
-      podDb: PodDbClient,
+      glazeDb: GlazeDbClient,
       tokenAssetId: number,
       tokenAddress: string,
       tokenAbi: any) {
     this.config = config;
     this.ethereumClient = createEthereumClient(this.config.host);
-    this.podDb = podDb;
+    this.glazeDb = glazeDb;
 
     this.start(tokenAssetId, tokenAddress, tokenAbi);
   }
 
   private async start(
       tokenAssetId: number, tokenAddress: string, tokenAbi: any) {
-    const lastDepositBlock = await this.podDb.getLastErc20DepositBlock();
+    const lastDepositBlock = await this.glazeDb.getLastErc20DepositBlock();
 
     this.ethereumClient.onDeposit(
         tokenAddress,
@@ -58,7 +58,7 @@ export class EthereumMonitor {
          from: string,
          depositId: string,
          amount: number) => {
-      this.podDb.deposit(
+      this.glazeDb.deposit(
           tokenAssetId, block, transaction, from, depositId, amount);
     });
   }

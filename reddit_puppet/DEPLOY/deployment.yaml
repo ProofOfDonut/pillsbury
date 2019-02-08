@@ -1,60 +1,60 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pod-reddit-puppet
+  name: pb-reddit-puppet
 spec:
   replicas: 1
   selector:
     matchLabels:
-      name: pod-reddit-puppet
+      name: pb-reddit-puppet
   template:
     metadata:
       labels:
-        name: pod-reddit-puppet
+        name: pb-reddit-puppet
     spec:
       containers:
-        - name: pod-reddit-puppet
+        - name: pb-reddit-puppet
           image: gcr.io/silver-harmony-228021/reddit-puppet:$image_version
           ports:
             - containerPort: 8000
           volumeMounts:
-            - name: pod-reddit-puppet-config
-              mountPath: /pod/config/reddit-puppet
-            - name: pod-db-config
-              mountPath: /pod/config/db
-            - name: pod-db-ssl-client-cert
-              mountPath: /pod/config/db_certs/client-cert
-            - name: pod-db-ssl-client-key
-              mountPath: /pod/config/db_certs/client-key
-            - name: pod-db-ssl-server-ca
-              mountPath: /pod/config/db_certs/server-ca
+            - name: pb-reddit-puppet-config
+              mountPath: /pillsbury/config/reddit-puppet
+            - name: pb-db-config
+              mountPath: /pillsbury/config/db
+            - name: pb-db-ssl-client-cert
+              mountPath: /pillsbury/config/db_certs/client-cert
+            - name: pb-db-ssl-client-key
+              mountPath: /pillsbury/config/db_certs/client-key
+            - name: pb-db-ssl-server-ca
+              mountPath: /pillsbury/config/db_certs/server-ca
           env:
             - name: NODE_ENV
               value: production
             - name: REDDIT_PUPPET_CONFIG
-              value: "/pod/config/reddit-puppet/json"
+              value: "/pillsbury/config/reddit-puppet/json"
             - name: DB_CONFIG
-              value: "/pod/config/db/json"
+              value: "/pillsbury/config/db/json"
             - name: DB_NAME
-              value: "pod"
+              value: "glaze"
       volumes:
-        - name: pod-reddit-puppet-config
+        - name: pb-reddit-puppet-config
           secret:
-            secretName: pod-reddit-puppet-config
+            secretName: pb-reddit-puppet-config
             defaultMode: 0400
-        - name: pod-db-config
+        - name: pb-db-config
           secret:
-            secretName: pod-db-config
+            secretName: pb-db-config
             defaultMode: 0400
-        - name: pod-db-ssl-client-cert
+        - name: pb-db-ssl-client-cert
           secret:
-            secretName: pod-db-ssl-client-cert
+            secretName: pb-db-ssl-client-cert
             defaultMode: 0400
-        - name: pod-db-ssl-client-key
+        - name: pb-db-ssl-client-key
           secret:
-            secretName: pod-db-ssl-client-key
+            secretName: pb-db-ssl-client-key
             defaultMode: 0400
-        - name: pod-db-ssl-server-ca
+        - name: pb-db-ssl-server-ca
           secret:
-            secretName: pod-db-ssl-server-ca
+            secretName: pb-db-ssl-server-ca
             defaultMode: 0400

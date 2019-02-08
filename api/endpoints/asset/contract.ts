@@ -6,29 +6,31 @@ import {
 } from '../../../common/ensure';
 import {HttpMethod} from '../../../common/net/http_method';
 import {assetSymbolFromString} from '../../../common/types/Asset';
-import {PodDbClient} from '../../../pod_db';
+import {GlazeDbClient} from '../../../glaze_db';
 import {requireUserId} from '../../user';
 
-export function routeAssetContract(apiServer: ApiServer, podDb: PodDbClient) {
+export function routeAssetContract(
+    apiServer: ApiServer,
+    glazeDb: GlazeDbClient) {
   apiServer.addListener(
       HttpMethod.GET,
       '/asset::asset_id/contract',
       async (req: Request, res: Response) => {
         await handleAssetContract(
-            podDb,
+            glazeDb,
             req,
             res);
       });
 }
 
 async function handleAssetContract(
-    podDb: PodDbClient,
+    glazeDb: GlazeDbClient,
     req: Request,
     res: Response):
     Promise<void> {
-  const unused_userId = await requireUserId(req, podDb);
+  const unused_userId = await requireUserId(req, glazeDb);
   const assetId = ensureSafeInteger(+ensurePropString(req.params, 'asset_id'));
-  const contract = await podDb.getAssetContractDetails(assetId, 1);
+  const contract = await glazeDb.getAssetContractDetails(assetId, 1);
   res
     .set('Content-Type', 'application/json; charset=utf-8')
     .end(JSON.stringify({contract}));

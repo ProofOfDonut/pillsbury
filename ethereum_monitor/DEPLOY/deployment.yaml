@@ -1,60 +1,60 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pod-ethereum-monitor
+  name: pb-ethereum-monitor
 spec:
   replicas: 1
   selector:
     matchLabels:
-      name: pod-ethereum-monitor
+      name: pb-ethereum-monitor
   template:
     metadata:
       labels:
-        name: pod-ethereum-monitor
+        name: pb-ethereum-monitor
     spec:
       containers:
-        - name: pod-ethereum-monitor
+        - name: pb-ethereum-monitor
           image: gcr.io/silver-harmony-228021/ethereum-monitor:$image_version
           ports:
             - containerPort: 8000
           volumeMounts:
-            - name: pod-ethereum-monitor-config
-              mountPath: /pod/config/ethereum-monitor
-            - name: pod-db-config
-              mountPath: /pod/config/db
-            - name: pod-db-ssl-client-cert
-              mountPath: /pod/config/db_certs/client-cert
-            - name: pod-db-ssl-client-key
-              mountPath: /pod/config/db_certs/client-key
-            - name: pod-db-ssl-server-ca
-              mountPath: /pod/config/db_certs/server-ca
+            - name: pb-ethereum-monitor-config
+              mountPath: /pillsbury/config/ethereum-monitor
+            - name: pb-db-config
+              mountPath: /pillsbury/config/db
+            - name: pb-db-ssl-client-cert
+              mountPath: /pillsbury/config/db_certs/client-cert
+            - name: pb-db-ssl-client-key
+              mountPath: /pillsbury/config/db_certs/client-key
+            - name: pb-db-ssl-server-ca
+              mountPath: /pillsbury/config/db_certs/server-ca
           env:
             - name: NODE_ENV
               value: production
             - name: ETHEREUM_MONITOR_CONFIG
-              value: "/pod/config/ethereum-monitor/json"
+              value: "/pillsbury/config/ethereum-monitor/json"
             - name: DB_CONFIG
-              value: "/pod/config/db/json"
+              value: "/pillsbury/config/db/json"
             - name: DB_NAME
-              value: "pod"
+              value: "glaze"
       volumes:
-        - name: pod-ethereum-monitor-config
+        - name: pb-ethereum-monitor-config
           secret:
-            secretName: pod-ethereum-monitor-config
+            secretName: pb-ethereum-monitor-config
             defaultMode: 0400
-        - name: pod-db-config
+        - name: pb-db-config
           secret:
-            secretName: pod-db-config
+            secretName: pb-db-config
             defaultMode: 0400
-        - name: pod-db-ssl-client-cert
+        - name: pb-db-ssl-client-cert
           secret:
-            secretName: pod-db-ssl-client-cert
+            secretName: pb-db-ssl-client-cert
             defaultMode: 0400
-        - name: pod-db-ssl-client-key
+        - name: pb-db-ssl-client-key
           secret:
-            secretName: pod-db-ssl-client-key
+            secretName: pb-db-ssl-client-key
             defaultMode: 0400
-        - name: pod-db-ssl-server-ca
+        - name: pb-db-ssl-server-ca
           secret:
-            secretName: pod-db-ssl-server-ca
+            secretName: pb-db-ssl-server-ca
             defaultMode: 0400

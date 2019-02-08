@@ -5,7 +5,7 @@ import {Browser, ElementHandle, Page} from 'puppeteer';
 import {
   ensure, ensureEqual, ensurePropString, ensureSafeInteger, ensureString,
 } from '../common/ensure';
-import {PodDbClient} from '../pod_db';
+import {GlazeDbClient} from '../glaze_db';
 
 // This may not be needed. At one point we had trouble signing in and it was
 // thought multiple attempts might help, but since then I think those problems
@@ -19,7 +19,7 @@ const TMP_DIR = new Promise(
     (resolve: (dir: string) => void,
      reject: (err: Error) => void) => {
   exec(
-      'mktemp -d /tmp/pod-rs-XXXXXXXX',
+      'mktemp -d /tmp/pb-rs-XXXXXXXX',
       {'encoding': 'utf8'},
       (err: Error, dir: string) => {
     if (err) {
@@ -33,7 +33,7 @@ const TMP_DIR = new Promise(
 export async function createRedditSenderEngine(
     username: string,
     password: string,
-    podDb: PodDbClient):
+    glazeDb: GlazeDbClient):
     Promise<RedditSenderEngine> {
   const browser = await puppeteer.launch({
     'args': ['--no-sandbox'],
@@ -44,24 +44,24 @@ export async function createRedditSenderEngine(
       'height': 800,
     },
   });
-  return new RedditSenderEngine(browser, username, password, podDb);
+  return new RedditSenderEngine(browser, username, password, glazeDb);
 }
 
 export class RedditSenderEngine {
   private browser: Browser;
   private hubUsername: string;
   private hubPassword: string;
-  private podDb: PodDbClient;
+  private glazeDb: GlazeDbClient;
 
   constructor(
       browser: Browser,
       username: string,
       password: string,
-      podDb: PodDbClient) {
+      glazeDb: GlazeDbClient) {
     this.browser = browser;
     this.hubUsername = username;
     this.hubPassword = password;
-    this.podDb = podDb;
+    this.glazeDb = glazeDb;
   }
 
   async close() {
@@ -74,7 +74,7 @@ export class RedditSenderEngine {
   async updateRedditHubBearerToken() {
     const token = await this.withPage(
         (page: Page) => this.getRedditHubBearerToken(page));
-    await this.podDb.setRedditHubBearerToken(token);
+    await this.glazeDb.setRedditHubBearerToken(token);
   }
 
   private getRedditHubBearerToken(page: Page): Promise<string> {

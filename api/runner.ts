@@ -1,7 +1,7 @@
-import * as minimist from 'minimist';
+ort * as minimist from 'minimist';
 import {join} from 'path';
 import {ensurePropString} from '../common/ensure';
-import {createPodDbClientFromConfigFile} from '../pod_db';
+import {createGlazeDbClientFromConfigFile} from '../glaze_db';
 import {ApiServer} from './server';
 import {routeAsset} from './endpoints/asset';
 import {routeAssetContract} from './endpoints/asset/contract';
@@ -24,29 +24,29 @@ const dbConfigFile = ensurePropString(args, 'db_config');
 const dbName = ensurePropString(args, 'db_name');
 
 async function main() {
-  const podDb = await createPodDbClientFromConfigFile(dbConfigFile, dbName);
+  const glazeDb = await createGlazeDbClientFromConfigFile(dbConfigFile, dbName);
   const apiServer = new ApiServer(
       configFile,
       masterKeyFile,
       masterKeyPwFile,
-      podDb);
+      glazeDb);
   const apiConfig = await apiServer.config;
 
-  routeAsset(apiServer, podDb);
-  routeAssetContract(apiServer, podDb);
+  routeAsset(apiServer, glazeDb);
+  routeAssetContract(apiServer, glazeDb);
   routeAssetWithdraw(
       apiServer,
-      podDb,
+      glazeDb,
       apiConfig.redditClient,
       apiConfig.redditPuppetHost,
       apiConfig.redditPuppetPort);
-  routeRedditLogin(apiServer, podDb);
-  routeUserAvailableErc20Withdrawals(apiServer, podDb);
-  routeUserBalances(apiServer, podDb);
-  routeUserDepositId(apiServer, podDb);
-  routeUserLogout(apiServer, podDb);
-  routeUserCsrfToken(apiServer, podDb);
-  routeUserIdentity(apiServer, podDb);
+  routeRedditLogin(apiServer, glazeDb);
+  routeUserAvailableErc20Withdrawals(apiServer, glazeDb);
+  routeUserBalances(apiServer, glazeDb);
+  routeUserDepositId(apiServer, glazeDb);
+  routeUserLogout(apiServer, glazeDb);
+  routeUserCsrfToken(apiServer, glazeDb);
+  routeUserIdentity(apiServer, glazeDb);
 
   const {host, port} = await apiServer.ready;
   if (host) {

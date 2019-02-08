@@ -1,76 +1,76 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pod-api
+  name: pb-api
 spec:
   replicas: 3
   selector:
     matchLabels:
-      name: pod-api
+      name: pb-api
   template:
     metadata:
       labels:
-        name: pod-api
+        name: pb-api
     spec:
       containers:
-        - name: pod-api
+        - name: pb-api
           image: gcr.io/silver-harmony-228021/api:$image_version
           ports:
             - containerPort: 8000
           volumeMounts:
-            - name: pod-api-config
-              mountPath: /pod/config/api-server
-            - name: pod-ethereum-master-key
-              mountPath: /pod/config/ethereum-master-key
-            - name: pod-ethereum-master-key-pw
-              mountPath: /pod/config/ethereum-master-key-pw
-            - name: pod-db-config
-              mountPath: /pod/config/db
-            - name: pod-db-ssl-client-cert
-              mountPath: /pod/config/db_certs/client-cert
-            - name: pod-db-ssl-client-key
-              mountPath: /pod/config/db_certs/client-key
-            - name: pod-db-ssl-server-ca
-              mountPath: /pod/config/db_certs/server-ca
+            - name: pb-api-config
+              mountPath: /pillsbury/config/api-server
+            - name: pb-ethereum-master-key
+              mountPath: /pillsbury/config/ethereum-master-key
+            - name: pb-ethereum-master-key-pw
+              mountPath: /pillsbury/config/ethereum-master-key-pw
+            - name: pb-db-config
+              mountPath: /pillsbury/config/db
+            - name: pb-db-ssl-client-cert
+              mountPath: /pillsbury/config/db_certs/client-cert
+            - name: pb-db-ssl-client-key
+              mountPath: /pillsbury/config/db_certs/client-key
+            - name: pb-db-ssl-server-ca
+              mountPath: /pillsbury/config/db_certs/server-ca
           env:
             - name: NODE_ENV
               value: production
             - name: API_CONFIG
-              value: "/pod/config/api-server/json"
+              value: "/pillsbury/config/api-server/json"
             - name: DB_CONFIG
-              value: "/pod/config/db/json"
+              value: "/pillsbury/config/db/json"
             - name: DB_NAME
-              value: "pod"
+              value: "glaze"
             - name: MASTER_KEY
-              value: "/pod/config/ethereum-master-key/json"
+              value: "/pillsbury/config/ethereum-master-key/json"
             - name: MASTER_KEY_PW
-              value: "/pod/config/ethereum-master-key-pw/json"
+              value: "/pillsbury/config/ethereum-master-key-pw/json"
       volumes:
-        - name: pod-api-config
+        - name: pb-api-config
           secret:
-            secretName: pod-api-config
+            secretName: pb-api-config
             defaultMode: 0400
-        - name: pod-ethereum-master-key
+        - name: pb-ethereum-master-key
           secret:
-            secretName: pod-ethereum-master-key
+            secretName: pb-ethereum-master-key
             defaultMode: 0400
-        - name: pod-ethereum-master-key-pw
+        - name: pb-ethereum-master-key-pw
           secret:
-            secretName: pod-ethereum-master-key-pw
+            secretName: pb-ethereum-master-key-pw
             defaultMode: 0400
-        - name: pod-db-config
+        - name: pb-db-config
           secret:
-            secretName: pod-db-config
+            secretName: pb-db-config
             defaultMode: 0400
-        - name: pod-db-ssl-client-cert
+        - name: pb-db-ssl-client-cert
           secret:
-            secretName: pod-db-ssl-client-cert
+            secretName: pb-db-ssl-client-cert
             defaultMode: 0400
-        - name: pod-db-ssl-client-key
+        - name: pb-db-ssl-client-key
           secret:
-            secretName: pod-db-ssl-client-key
+            secretName: pb-db-ssl-client-key
             defaultMode: 0400
-        - name: pod-db-ssl-server-ca
+        - name: pb-db-ssl-server-ca
           secret:
-            secretName: pod-db-ssl-server-ca
+            secretName: pb-db-ssl-server-ca
             defaultMode: 0400

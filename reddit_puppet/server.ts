@@ -10,15 +10,15 @@ import {
   ensureSafeInteger,
 } from '../common/ensure';
 import {readFile} from '../common/io/files/read';
-import {PodDbClient} from '../pod_db';
+import {GlazeDbClient} from '../glaze_db';
 import {RedditSenderEngine, createRedditSenderEngine} from './engine';
 
 export async function createRedditSenderServer(
     configFile: string,
-    podDb: PodDbClient) {
+    glazeDb: GlazeDbClient) {
   const config = await readConfig(configFile);
   const engine =
-      await createRedditSenderEngine(config.username, config.password, podDb);
+      await createRedditSenderEngine(config.username, config.password, glazeDb);
   const app = await initExpress(config.host, config.port);
   return new RedditSenderServer(engine, app, config.port);
 }

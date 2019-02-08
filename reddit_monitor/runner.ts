@@ -7,7 +7,7 @@ import {
 import {formatNumber} from '../common/numbers/format';
 import {readFile} from '../common/io/files/read';
 import {RedditClient, createRedditClientFromConfigFile} from '../lib/reddit';
-import {PodDbClient, createPodDbClientFromConfigFile} from '../pod_db';
+import {GlazeDbClient, createGlazeDbClientFromConfigFile} from '../glaze_db';
 import {sendRedditDonuts} from '../reddit_puppet';
 import {DonutDelivery} from './donut_delivery';
 import {getInboundDonuts} from './inbound_donuts';
@@ -23,20 +23,20 @@ const dbConfigFile = ensurePropString(args, 'db_config');
 const dbName = ensurePropString(args, 'db_name');
 
 async function main() {
-  const [redditClient, podDb, [redditPuppetHost, redditPuppetPort]]:
-      [RedditClient, PodDbClient, [string, number]] =
+  const [redditClient, glazeDb, [redditPuppetHost, redditPuppetPort]]:
+      [RedditClient, GlazeDbClient, [string, number]] =
       await Promise.all([
         createRedditClientFromConfigFile(configFile),
-        createPodDbClientFromConfigFile(dbConfigFile, dbName),
+        createGlazeDbClientFromConfigFile(dbConfigFile, dbName),
         getRedditPuppetInfo(configFile),
       ]);
 
-  let lastKnownDelivery: string = await podDb.getLastDeliveryId();
+  let lastKnownDelivery: string = await glazeDb.getLastDeliveryId();
   while (true) {
     lastKnownDelivery =
         await checkInboundDeliveries(
             redditClient,
-            podDb,
+            glazeDb,
             redditPuppetHost,
             redditPuppetPort,
             lastKnownDelivery);
@@ -46,7 +46,7 @@ async function main() {
 
 async function checkInboundDeliveries(
     redditClient: RedditClient,
-    podDb: PodDbClient,
+    glazeDb: GlazeDbClient,
     redditPuppetHost: string,
     redditPuppetPort: number,
     lastKnownDelivery: string):
@@ -54,7 +54,7 @@ async function checkInboundDeliveries(
   const deliveries = await getInboundDonuts(redditClient, lastKnownDelivery);
   if (deliveries.length > 0) {
     const successfulDeliveries =
-        await podDb.addInboundDeliveries(deliveries);
+        await glazeDb.addInboundDeliveries(deliveries);
     // The cient doesn't care whether messages are marked as read or not. It
     // always retrieved based on the last message it has in the database.
     // However, we mark them as read here to make it easier for a human to sign
@@ -64,7 +64,7 @@ async function checkInboundDeliveries(
           successfulDeliveries.map(u => u.delivery.id));
       await notifyOfReceivedDeliveries(
           redditClient,
-          podDb,
+          glazeDb,
           redditPuppetHost,
           redditPuppetPort,
           successfulDeliveries);
@@ -76,7 +76,7 @@ async function checkInboundDeliveries(
 
 async function notifyOfReceivedDeliveries(
     redditClient: RedditClient,
-    podDb: PodDbClient,
+    glazeDb: GlazeDbClient,
     redditPuppetHost: string,
     redditPuppetPort: number,
     deliveries: DonutReceipt[]):
@@ -101,7 +101,7 @@ async function notifyOfReceivedDeliveries(
         returnTotal == 1
             ? `${formattedReturnTotal} donut`
             : `${formattedReturnTotal} donuts`;
-    const deliveriesEnabled = amount > 0 || await podDb.deliveriesEnabled();
+    const deliveriesEnabled = amount > 0 || await glazeDb.deliveriesEnabled();
     const extraInfo =
         returnTotal > 0
         ? `\n\n${formattedReturnTotalWithUnit} are being returned to you `
@@ -128,7 +128,7 @@ async function notifyOfReceivedDeliveries(
     if (returnTotal > 0) {
       promises.push(
           sendRedditDonuts(
-              podDb,
+              glazeDb,
               redditPuppetHost,
               redditPuppetPort,
               from,

@@ -11,7 +11,7 @@ export async function getWithToken(
       url + (params ? params.toString(Method.GET) : ''),
       new Map([
         ['Authorization', `Bearer ${token}`],
-        ['User-Agent', 'ProofOfDonutClient/0.1 by ProofOfDonut'],
+        ['User-Agent', 'PillsburyClient/0.1'],
       ]));
   return response.toObject();
 }
@@ -27,7 +27,7 @@ export async function postWithToken(
       url,
       new Map([
         ['Authorization', `Bearer ${token}`],
-        ['User-Agent', 'ProofOfDonutClient/0.1 by ProofOfDonut'],
+        ['User-Agent', 'PillsburyClient/0.1'],
         ['Content-Type', 'application/x-www-form-urlencoded'],
       ]),
       data);
@@ -45,7 +45,7 @@ export async function postJsonWithToken(
       url,
       new Map([
         ['Authorization', `Bearer ${token}`],
-        ['User-Agent', 'ProofOfDonutClient/0.1 by ProofOfDonut'],
+        ['User-Agent', 'PillsburyClient/0.1'],
         ['Content-Type', 'application/json'],
       ]),
       data);

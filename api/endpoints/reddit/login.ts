@@ -3,10 +3,10 @@ import {parse as parseUrl} from 'url';
 import {ApiServer} from '../../server';
 import {ensurePropString} from '../../../common/ensure';
 import {HttpMethod} from '../../../common/net/http_method';
-import {PodDbClient} from '../../../pod_db';
+import {GlazeDbClient} from '../../../glaze_db';
 import {getTokenWithCode, getUsername} from '../../../lib/reddit';
 
-export function routeRedditLogin(apiServer: ApiServer, podDb: PodDbClient) {
+export function routeRedditLogin(apiServer: ApiServer, glazeDb: GlazeDbClient) {
   apiServer.addListener(
       HttpMethod.GET,
       '/reddit/login',
@@ -19,7 +19,7 @@ export function routeRedditLogin(apiServer: ApiServer, podDb: PodDbClient) {
             baseUri,
             dashboardUrl,
             secureCookies,
-            podDb,
+            glazeDb,
             req,
             res);
       },
@@ -32,7 +32,7 @@ async function handleRedditLogin(
     baseUri: string,
     dashboardUrl: string,
     secureCookies: boolean,
-    podDb: PodDbClient,
+    glazeDb: GlazeDbClient,
     req: Request,
     res: Response):
     Promise<void> {
@@ -40,7 +40,7 @@ async function handleRedditLogin(
   const state = ensurePropString(url.query, 'state');
   const code = ensurePropString(url.query, 'code');
 
-  await podDb.checkCsrfToken(state);
+  await glazeDb.checkCsrfToken(state);
   const {accessToken, refreshToken} =
       await getTokenWithCode(
           code,
@@ -49,7 +49,7 @@ async function handleRedditLogin(
           secret);
   const username = await getUsername(accessToken);
   const sessionInfo =
-      await podDb.createSession(username, accessToken, refreshToken);
+      await glazeDb.createSession(username, accessToken, refreshToken);
   res
     .status(303)
     .set('Location', dashboardUrl)

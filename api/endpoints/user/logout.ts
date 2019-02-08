@@ -3,28 +3,28 @@ import {parse as parseUrl} from 'url';
 import {ApiServer} from '../../server';
 import {HttpMethod} from '../../../common/net/http_method';
 import {User} from '../../../common/types/User';
-import {PodDbClient} from '../../../pod_db';
+import {GlazeDbClient} from '../../../glaze_db';
 import {getSessionToken} from '../../request';
 import {getUserId} from '../../user';
 
-export function routeUserLogout(apiServer: ApiServer, podDb: PodDbClient) {
+export function routeUserLogout(apiServer: ApiServer, glazeDb: GlazeDbClient) {
   apiServer.addListener(
       HttpMethod.POST,
       '/user/logout',
       async (req: Request, res: Response) => {
         await handleUserLogout(
-            podDb,
+            glazeDb,
             req,
             res);
       });
 }
 
 async function handleUserLogout(
-    podDb: PodDbClient,
+    glazeDb: GlazeDbClient,
     req: Request,
     res: Response):
     Promise<void> {
-  await podDb.logout(getSessionToken(req));
+  await glazeDb.logout(getSessionToken(req));
   res
     .set('Content-Type', 'application/json; charset=utf-8')
     .clearCookie('session')

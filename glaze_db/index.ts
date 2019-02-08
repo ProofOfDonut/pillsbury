@@ -1,13 +1,13 @@
 import {createPostgresClientFromConfigFile} from '../lib/postgres';
-import {PodDbClient} from './client';
+import {GlazeDbClient} from './client';
 
-export {PodDbClient};
+export {GlazeDbClient};
 
-export async function createPodDbClientFromConfigFile(
+export async function createGlazeDbClientFromConfigFile(
     configFile: string,
     dbname: string = ''):
-    Promise<PodDbClient> {
-  return new PodDbClient(
+    Promise<GlazeDbClient> {
+  return new GlazeDbClient(
       await createPostgresClientFromConfigFile(
           configFile,
           dbname));

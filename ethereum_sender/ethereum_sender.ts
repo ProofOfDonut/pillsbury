@@ -8,40 +8,40 @@ import {QueuedTransaction} from '../common/types/QueuedTransaction';
 import {
   EthereumClient, PendingTransaction, createEthereumClient,
 } from '../lib/ethereum';
-import {PodDbClient} from '../pod_db';
+import {GlazeDbClient} from '../glaze_db';
 
 export async function createEthereumSender(
     configFile: string,
-    podDb: PodDbClient,
+    glazeDb: GlazeDbClient,
     masterKeyFile: string,
     masterKeyPwFile: string):
     Promise<EthereumSender> {
   return new EthereumSender(
       await readConfig(configFile, masterKeyFile, masterKeyPwFile),
-      podDb);
+      glazeDb);
 }
 
 export class EthereumSender {
   private config: Config;
   private ethereumClient: EthereumClient;
-  private podDb: PodDbClient;
+  private glazeDb: GlazeDbClient;
 
   constructor(
       config: Config,
-      podDb: PodDbClient) {
+      glazeDb: GlazeDbClient) {
     this.config = config;
     this.ethereumClient = createEthereumClient(
         this.config.host,
         this.config.masterKey,
         this.config.masterKeyPw);
-    this.podDb = podDb;
+    this.glazeDb = glazeDb;
 
     this.start();
   }
 
   private async start() {
     while (true) {
-      const [tx, queuedTxId] = await this.podDb.getNextQueuedTransaction();
+      const [tx, queuedTxId] = await this.glazeDb.getNextQueuedTransaction();
       if (tx) {
         await this.processTransaction(tx, queuedTxId);
       }
@@ -51,9 +51,9 @@ export class EthereumSender {
 
   private async processTransaction(tx: QueuedTransaction, queuedTxId: number) {
     const pendingTx = await this.ethereumClient.sendTransaction(tx);
-    await this.podDb.setQueuedTransactionHash(queuedTxId, pendingTx.hash);
+    await this.glazeDb.setQueuedTransactionHash(queuedTxId, pendingTx.hash);
     await this.transactionSent(pendingTx);
-    await this.podDb.dequeueTransaction(queuedTxId);
+    await this.glazeDb.dequeueTransaction(queuedTxId);
   }
 
   private async transactionSent(pendingTx: PendingTransaction) {

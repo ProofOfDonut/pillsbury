@@ -1,11 +1,11 @@
 #!/bin/bash
 set -e -o pipefail
 
-bin/veil -u "pod_db/dev_manager.sh upgrade -y"
-db_name=$(bin/veil pod_db/dev_manager.sh database_name)
+bin/veil -u "glaze_db/dev_manager.sh upgrade -y"
+db_name=$(bin/veil glaze_db/dev_manager.sh database_name)
 bin/veil "tsc && node api/runner \
-    --config $HOME/.proof_of_donut/api_server.json \
-    --master_key $HOME/.proof_of_donut/masterkey.json \
-    --master_key_pw $HOME/.proof_of_donut/masterkeypw.json \
-    --db_config $HOME/.proof_of_donut/db.json \
+    --config $HOME/.pillsbury/api_server.json \
+    --master_key $HOME/.pillsbury/masterkey.json \
+    --master_key_pw $HOME/.pillsbury/masterkeypw.json \
+    --db_config $HOME/.pillsbury/db.json \
     --db_name $db_name"

@@ -18,7 +18,7 @@ import {
 import {Balances} from '../common/types/Balances';
 import {QueuedTransaction} from '../common/types/QueuedTransaction';
 import {User} from '../common/types/User';
-// TODO: pod_db shouldn't import from reddit_monitor
+// TODO: glaze_db shouldn't import from reddit_monitor
 import {DonutDelivery} from '../reddit_monitor';
 import {PostgresClient, Transaction} from '../lib/postgres';
 import {getTokenWithRefreshToken} from '../lib/reddit';
@@ -29,7 +29,7 @@ type SessionInformation = {
   token: string;
   expiration: Date;
 };
-export class PodDbClient {
+export class GlazeDbClient {
   private pgClient: PostgresClient;
 
   constructor(pgClient: PostgresClient) {

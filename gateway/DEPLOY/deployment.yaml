@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pod-gateway-configmap
+  name: pb-gateway-configmap
 data:
   httpd.conf: |
     # Apache httpd v2.4 minimal configuration
@@ -67,43 +67,43 @@ data:
       # "myapp" in the rules relies a K8s cluster add-on for DNS aliases
       # see https://kubernetes.io/docs/concepts/services-networking/service/#dns
       ProxyRequests Off
-      ProxyPass         "/"    "http://pod-dashboard:8000/"
-      ProxyPassReverse  "/"    "http://pod-dashboard:8000/"
+      ProxyPass         "/"    "http://pb-dashboard:8000/"
+      ProxyPassReverse  "/"    "http://pb-dashboard:8000/"
     </VirtualHost>
 
 ---
 kind: Service
 apiVersion: v1
 metadata:
-  name: pod-gateway
+  name: pb-gateway
 spec:
   type: NodePort
   ports:
   - name: http
     port: 8000
-    targetPort: pod-gateway
+    targetPort: pb-gateway
     protocol: TCP
   selector:
-    app: pod-gateway
+    app: pb-gateway
 
 ---
 kind: Deployment
 apiVersion: apps/v1beta2
 metadata:
-  name: pod-gateway
+  name: pb-gateway
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: pod-gateway
+      app: pb-gateway
   template:
     metadata:
-      name: pod-gateway
+      name: pb-gateway
       labels:
-        app: pod-gateway
+        app: pb-gateway
     spec:
       containers:
-      - name: pod-gateway
+      - name: pb-gateway
         image: httpd:2.4-alpine
         imagePullPolicy: Always
         readinessProbe:
@@ -111,15 +111,15 @@ spec:
             path: /
             port: 8000
         command: ["/usr/local/apache2/bin/httpd"]
-        args: ["-f", "/etc/pod-gateway-configmap/httpd.conf", "-DFOREGROUND"]
+        args: ["-f", "/etc/pb-gateway-configmap/httpd.conf", "-DFOREGROUND"]
         ports:
-        - name: pod-gateway
+        - name: pb-gateway
           containerPort: 8000
         volumeMounts:
-        - mountPath: /etc/pod-gateway-configmap
+        - mountPath: /etc/pb-gateway-configmap
           name: apacheconfig
           readOnly: true
       volumes:
         - name: apacheconfig
           configMap:
-            name: pod-gateway-configmap
+            name: pb-gateway-configmap

@@ -1,10 +1,10 @@
 # Derived from https://paul.kinlan.me/hosting-puppeteer-in-a-docker-container/
 
-FROM gcr.io/silver-harmony-228021/pod-with-chrome:$image_version
+FROM gcr.io/silver-harmony-228021/pb-with-chrome:$image_version
 
 # Run everything after as non-privileged user.
 # USER pptruser
 
-WORKDIR /pod/code
+WORKDIR /pillsbury/code
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["/pod/code/reddit_puppet/DEPLOY/run.sh"]
+CMD ["/pillsbury/code/reddit_puppet/DEPLOY/run.sh"]

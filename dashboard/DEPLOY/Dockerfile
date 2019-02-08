@@ -1,8 +1,8 @@
 FROM gcr.io/silver-harmony-228021/node:v2
 
-RUN mkdir -p /pod
-COPY . /pod/code
-RUN mkdir -p /pod/config
+RUN mkdir -p /pillsbury
+COPY . /pillsbury/code
+RUN mkdir -p /pillsbury/config
 
-WORKDIR /pod/code
-CMD ["/pod/code/dashboard/DEPLOY/run.sh"]
+WORKDIR /pillsbury/code
+CMD ["/pillsbury/code/dashboard/DEPLOY/run.sh"]

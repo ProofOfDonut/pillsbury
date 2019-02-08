@@ -6,7 +6,7 @@ import {readFile} from '../common/io/files/read';
 import {formatNumber} from '../common/numbers/format';
 import {AssetSymbol} from '../common/types/Asset';
 import {RedditClient} from '../lib/reddit';
-import {PodDbClient, createPodDbClientFromConfigFile} from '../pod_db';
+import {GlazeDbClient, createGlazeDbClientFromConfigFile} from '../glaze_db';
 import {sendRedditDonuts} from '../reddit_puppet';
 
 const args = minimist(process.argv.slice(2));
@@ -15,22 +15,22 @@ const dbConfigFile = ensurePropString(args, 'db_config');
 const dbName = ensurePropString(args, 'db_name');
 
 async function main() {
-  const [{redditPuppetHost, redditPuppetPort, redditClient}, podDb]:
-      [Config, PodDbClient] =
+  const [{redditPuppetHost, redditPuppetPort, redditClient}, glazeDb]:
+      [Config, GlazeDbClient] =
       await Promise.all([
     readConfigFile(configFile),
-    createPodDbClientFromConfigFile(dbConfigFile, dbName),
+    createGlazeDbClientFromConfigFile(dbConfigFile, dbName),
   ]);
-  const asset = await podDb.getAssetBySymbol(AssetSymbol.DONUT);
+  const asset = await glazeDb.getAssetBySymbol(AssetSymbol.DONUT);
   while (true) {
-    const refund = await podDb.getNextRefund(asset.id);
+    const refund = await glazeDb.getNextRefund(asset.id);
     if (!refund) {
       break;
     }
     console.log(
         `Refunding ${refund.username} ${asset.name.format(refund.amount)}`);
     await sendRedditDonuts(
-        podDb,
+        glazeDb,
         redditPuppetHost,
         redditPuppetPort,
         refund.username,

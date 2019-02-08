@@ -1,7 +1,7 @@
 {
-  "name": "proof-of-donut",
+  "name": "pillsbury",
   "version": "1.0.0",
-  "description": "Proof of Donut Monolith",
+  "description": "Pillsbury Monolith",
   "main": "index.js",
   "directories": {
     "lib": "lib"

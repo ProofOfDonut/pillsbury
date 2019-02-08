@@ -24,7 +24,7 @@ async function getGasPriceFromEtherChain(): Promise<number> {
       HttpMethod.GET,
       'https://www.etherchain.org/api/gasPriceOracle',
       new Map<string, string>([
-        ['User-Agent', 'ProofOfDonutClient/0.1'],
+        ['User-Agent', 'PillsburyClient/0.1'],
       ])));
   const fast = ensureSafeDecimal(
       +ensurePropString(response.toObject(), 'fast'));
