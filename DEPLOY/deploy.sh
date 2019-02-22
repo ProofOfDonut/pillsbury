@@ -10,7 +10,6 @@ fi
 project_filter="$2"
 
 repo='gcr.io/silver-harmony-228021'
-base_tag="$repo/pod:$version"
 veiled_workspace=$(bin/veil pwd)
 
 function deploy() {
@@ -88,16 +87,16 @@ fi
 
 if [ "$project_filter" != 'dashboard' ]; then
   # Build project base
-  bin/veil "docker build \
-      -t $base_tag \
-      -f tools/docker/base_images/pod/Dockerfile \
-      $veiled_workspace"
-  docker push $base_tag
+  build_and_push \
+      tools/docker/base_images/pillsbury \
+      pillsbury
 
   if [ "$project_filter" == '' ] \
       || [ "$project_filter" == 'reddit_puppet' ]; then
     # Build base for reddit_puppet
-    build_and_push tools/docker/base_images/pod_with_chrome pod_with_chrome
+    build_and_push \
+        tools/docker/base_images/pillsbury_with_chrome \
+        pillsbury_with_chrome
   fi
 fi
 
@@ -105,7 +104,8 @@ deploy api
 deploy dashboard
 deploy ethereum_monitor
 deploy ethereum_sender
-deploy reddit_monitor
+deploy reddit_balance_monitor
+deploy reddit_delivery_monitor
 deploy reddit_puppet
 
 # Only deploy reddit_refunder if it was specified.

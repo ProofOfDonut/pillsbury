@@ -1,25 +1,25 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pb-reddit-monitor
+  name: pb-reddit-delivery-monitor
 spec:
   replicas: 1
   selector:
     matchLabels:
-      name: pb-reddit-monitor
+      name: pb-reddit-delivery-monitor
   template:
     metadata:
       labels:
-        name: pb-reddit-monitor
+        name: pb-reddit-delivery-monitor
     spec:
       containers:
-        - name: pb-reddit-monitor
-          image: gcr.io/silver-harmony-228021/reddit-monitor:$image_version
+        - name: pb-reddit-delivery-monitor
+          image: gcr.io/silver-harmony-228021/reddit-delivery-monitor:$image_version
           ports:
             - containerPort: 8000
           volumeMounts:
-            - name: pb-reddit-monitor-config
-              mountPath: /pillsbury/config/reddit-monitor
+            - name: pb-reddit-delivery-monitor-config
+              mountPath: /pillsbury/config/reddit-delivery-monitor
             - name: pb-db-config
               mountPath: /pillsbury/config/db
             - name: pb-db-ssl-client-cert
@@ -31,16 +31,16 @@ spec:
           env:
             - name: NODE_ENV
               value: production
-            - name: REDDIT_MONITOR_CONFIG
-              value: "/pillsbury/config/reddit-monitor/json"
+            - name: REDDIT_DELIVERY_MONITOR_CONFIG
+              value: "/pillsbury/config/reddit-delivery-monitor/json"
             - name: DB_CONFIG
               value: "/pillsbury/config/db/json"
             - name: DB_NAME
               value: "pillsbury"
       volumes:
-        - name: pb-reddit-monitor-config
+        - name: pb-reddit-delivery-monitor-config
           secret:
-            secretName: pb-reddit-monitor-config
+            secretName: pb-reddit-delivery-monitor-config
             defaultMode: 0400
         - name: pb-db-config
           secret:

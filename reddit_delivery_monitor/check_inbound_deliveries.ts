@@ -1,13 +1,7 @@
-import * as minimist from 'minimist';
-import {join} from 'path';
-import {sleep} from  '../common/async/sleep';
-import {
-  ensure, ensurePropNumber, ensurePropObject, ensurePropString,
-} from '../common/ensure';
+import {ensure} from '../common/ensure';
 import {formatNumber} from '../common/numbers/format';
-import {readFile} from '../common/io/files/read';
-import {RedditClient, createRedditClientFromConfigFile} from '../lib/reddit';
-import {GlazeDbClient, createGlazeDbClientFromConfigFile} from '../glaze_db';
+import {GlazeDbClient} from '../glaze_db';
+import {RedditClient} from '../lib/reddit';
 import {sendRedditDonuts} from '../reddit_puppet';
 import {DonutDelivery} from './donut_delivery';
 import {getInboundDonuts} from './inbound_donuts';
@@ -17,34 +11,7 @@ type DonutReceipt = {
   returnAmount: number;
 };
 
-const args = minimist(process.argv.slice(2));
-const configFile = ensurePropString(args, 'config');
-const dbConfigFile = ensurePropString(args, 'db_config');
-const dbName = ensurePropString(args, 'db_name');
-
-async function main() {
-  const [redditClient, glazeDb, [redditPuppetHost, redditPuppetPort]]:
-      [RedditClient, GlazeDbClient, [string, number]] =
-      await Promise.all([
-        createRedditClientFromConfigFile(configFile),
-        createGlazeDbClientFromConfigFile(dbConfigFile, dbName),
-        getRedditPuppetInfo(configFile),
-      ]);
-
-  let lastKnownDelivery: string = await glazeDb.getLastDeliveryId();
-  while (true) {
-    lastKnownDelivery =
-        await checkInboundDeliveries(
-            redditClient,
-            glazeDb,
-            redditPuppetHost,
-            redditPuppetPort,
-            lastKnownDelivery);
-    await sleep(15000);
-  }
-}
-
-async function checkInboundDeliveries(
+export async function checkInboundDeliveries(
     redditClient: RedditClient,
     glazeDb: GlazeDbClient,
     redditPuppetHost: string,
@@ -154,16 +121,3 @@ function groupDeliveriesBySource(
   }
   return [...groups.values()];
 }
-
-async function getRedditPuppetInfo(
-    configFile: string):
-    Promise<[string, number]> {
-  const info = JSON.parse(<string> await readFile(configFile, 'utf8'));
-  const redditPuppetConfig = ensurePropObject(info, 'reddit-puppet');
-  return [
-    ensurePropString(redditPuppetConfig, 'host'),
-    ensurePropNumber(redditPuppetConfig, 'port'),
-  ];
-}
-
-main();
