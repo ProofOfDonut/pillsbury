@@ -5,16 +5,19 @@ import {GlazeDbClient, createGlazeDbClientFromConfigFile} from '../glaze_db';
 import {EthereumSender, createEthereumSender} from './ethereum_sender';
 
 const args = minimist(process.argv.slice(2));
-const configFile = ensurePropString(args, 'config');
+const ethereumNodeConfigFile = ensurePropString(args, 'ethereum_node_config');
 const dbConfigFile = ensurePropString(args, 'db_config');
 const dbName = ensurePropString(args, 'db_name');
-const masterKeyFile = ensurePropString(args, 'master_key');
-const masterKeyPwFile = ensurePropString(args, 'master_key_pw');
+const ethereumHubKeyFile = ensurePropString(args, 'ethereum_hub_key');
+const ethereumHubConfigFile = ensurePropString(args, 'ethereum_hub_config');
 
 async function main() {
   const glazeDb = await createGlazeDbClientFromConfigFile(dbConfigFile, dbName);
   const ethereumSender = await createEthereumSender(
-      configFile, glazeDb, masterKeyFile, masterKeyPwFile);
+      ethereumNodeConfigFile,
+      glazeDb,
+      ethereumHubKeyFile,
+      ethereumHubConfigFile);
   console.log(`Ready. Transactions will be sent on ${ethereumSender.host}.`);
 }
 

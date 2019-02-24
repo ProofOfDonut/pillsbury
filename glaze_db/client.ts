@@ -19,7 +19,7 @@ import {Balances} from '../common/types/Balances';
 import {QueuedTransaction} from '../common/types/QueuedTransaction';
 import {User} from '../common/types/User';
 // TODO: glaze_db shouldn't import from reddit_monitor
-import {DonutDelivery} from '../reddit_monitor';
+import {DonutDelivery} from '../reddit_delivery_monitor';
 import {PostgresClient, Transaction} from '../lib/postgres';
 import {getTokenWithRefreshToken} from '../lib/reddit';
 import {generateCsrfToken} from './csrf';

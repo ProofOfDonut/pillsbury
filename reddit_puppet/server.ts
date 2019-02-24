@@ -11,41 +11,50 @@ import {
 } from '../common/ensure';
 import {readFile} from '../common/io/files/read';
 import {GlazeDbClient} from '../glaze_db';
-import {RedditSenderEngine, createRedditSenderEngine} from './engine';
+import {RedditPuppetEngine, createRedditPuppetEngine} from './engine';
 
-export async function createRedditSenderServer(
-    configFile: string,
+export async function createRedditPuppetServer(
+    host: string,
+    port: number,
+    redditHubConfigFile: string,
     glazeDb: GlazeDbClient) {
-  const config = await readConfig(configFile);
+  const redditHubConfig = await readConfig(redditHubConfigFile);
   const engine =
-      await createRedditSenderEngine(config.username, config.password, glazeDb);
-  const app = await initExpress(config.host, config.port);
-  return new RedditSenderServer(engine, app, config.port);
+      await createRedditPuppetEngine(
+          redditHubConfig.username,
+          redditHubConfig.password,
+          glazeDb);
+  const app = await initExpress(host, port);
+  return new RedditPuppetServer(engine, app, port);
 }
 
-export class RedditSenderServer {
-  private engine: RedditSenderEngine;
+export class RedditPuppetServer {
+  private engine: RedditPuppetEngine;
   private app: Application;
   port: number;
 
-  constructor(engine: RedditSenderEngine, app: Application, port: number) {
+  constructor(engine: RedditPuppetEngine, app: Application, port: number) {
     this.engine = engine;
     this.app = app;
     this.port = port;
 
     this.app.post('/send::to::amount', async (req: Request, res: Response) => {
-      const recipient = ensurePropString(req.params, 'to');
-      const amount = ensureSafeInteger(+ensurePropString(req.params, 'amount'));
-      try {
-        // TODO: Maybe before actually sending, it should check with the DB to
-        // ensure the recipient actually does have that many donuts in his
-        // account.
-        await this.engine.sendDonuts(recipient, amount);
-        res.end();
-      } catch (err) {
-        this.handleError(
-            res, err, `When sending ${amount} donuts to ${recipient}`);
-      }
+      res.status(400).type('json').end(JSON.stringify({
+        'message': 'Endpoint disabled.',
+      }));
+
+      // const recipient = ensurePropString(req.params, 'to');
+      // const amount = ensureSafeInteger(+ensurePropString(req.params, 'amount'));
+      // try {
+      //   // TODO: Maybe before actually sending, it should check with the DB to
+      //   // ensure the recipient actually does have that many donuts in his
+      //   // account.
+      //   await this.engine.sendDonuts(recipient, amount);
+      //   res.end();
+      // } catch (err) {
+      //   this.handleError(
+      //       res, err, `When sending ${amount} donuts to ${recipient}`);
+      // }
     });
 
     this.app.post(
@@ -68,8 +77,8 @@ export class RedditSenderServer {
     console.error(detail);
     console.error(err ? err.stack || err.message || err : err);
     res.status(500).type('json').end(JSON.stringify({
-      message: err && err.message,
-      stack: err && err.stack,
+      'message': err && err.message,
+      'stack': err && err.stack,
     }));
   }
 }
@@ -80,29 +89,22 @@ async function readConfig(file: string): Promise<Config> {
 }
 
 class Config {
-  host: string|null;
-  port: number;
   username: string;
   password: string;
 
   constructor(info: Object) {
-    const host = ensureProp(info, 'host');
-    ensure(typeof host == 'string' || host == null,
-        'Expected property "host" to be a string or null.');
-    this.host = <string|null> host;
-    this.port = ensurePropNumber(info, 'port');
     this.username = ensurePropString(info, 'username');
     this.password = ensurePropString(info, 'password');
   }
 }
 
-function initExpress(host: string|null, port: number): Promise<Application> {
+function initExpress(host: string, port: number): Promise<Application> {
   const app = express();
   app.use(parseBodyJson({
     'type': 'application/json',
     'limit': '100kb',
   }));
   return new Promise(resolve => {
-    app.listen(port, host == null ? undefined : host, () => resolve(app));
+    app.listen(port, host == '' ? undefined : host, () => resolve(app));
   });
 }

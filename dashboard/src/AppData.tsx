@@ -42,6 +42,9 @@ type State = {
   getAvailableErc20Withdrawals: () => number|undefined;
   histories: Map<string, History>;
   defaultWithdrawalAddress: string;
+  redditClientId: string;
+  redditRedirectUri: string;
+  getRedditLoginConfig: () => [string, string]|undefined;
 };
 type PropTypes = {};
 class AppData extends PureComponent<PropTypes, State> {
@@ -69,6 +72,9 @@ class AppData extends PureComponent<PropTypes, State> {
       getAvailableErc20Withdrawals: () => this.getAvailableErc20Withdrawals(),
       histories: Map<string, History>(),
       defaultWithdrawalAddress: '',
+      redditClientId: '',
+      redditRedirectUri: '',
+      getRedditLoginConfig: () => this.getRedditLoginConfig(),
     };
     this.initialize();
   }
@@ -120,7 +126,8 @@ class AppData extends PureComponent<PropTypes, State> {
           withdraw={this.withdraw}
           defaultWithdrawalAddress={this.state.defaultWithdrawalAddress}
           getDepositId={() => this.asyncGetDepositId(ensure(this.state.user).id)}
-          getContractAddress={this.tmpAsyncGetDonutContractAddress} />
+          getContractAddress={this.tmpAsyncGetDonutContractAddress}
+          getRedditLoginConfig={this.state.getRedditLoginConfig} />
     );
   }
 
@@ -380,6 +387,35 @@ class AppData extends PureComponent<PropTypes, State> {
     }
     return response;
   };
+
+  private getRedditLoginConfig = (): [string, string]|undefined => {
+    if (this.state.redditClientId) {
+      return [
+        this.state.redditClientId,
+        ensure(this.state.redditRedirectUri),
+      ];
+    }
+    this.updateRedditLoginConfig();
+  };
+
+  private async updateRedditLoginConfig() {
+    const {redditClientId, redditRedirectUri} =
+        await this.asyncGetRedditLoginConfig();
+    this.setState({
+      redditClientId,
+      redditRedirectUri,
+      getRedditLoginConfig: () => this.getRedditLoginConfig(),
+    });
+  }
+
+  private async asyncGetRedditLoginConfig() {
+    const response = await this.apiRequest(HttpMethod.GET, '/reddit/config');
+    ensureObject(response);
+    return {
+      redditClientId: ensurePropString(response, 'client_id'),
+      redditRedirectUri: ensurePropString(response, 'redirect_uri'),
+    };
+  }
 
   private async apiRequest(
       method: HttpMethod,

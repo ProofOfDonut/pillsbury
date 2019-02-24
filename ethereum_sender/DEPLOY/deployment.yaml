@@ -18,8 +18,8 @@ spec:
           ports:
             - containerPort: 8000
           volumeMounts:
-            - name: pb-ethereum-sender-config
-              mountPath: /pillsbury/config/ethereum-sender
+            - name: pb-ethereum-node-config
+              mountPath: /pillsbury/config/ethereum-node
             - name: pb-db-config
               mountPath: /pillsbury/config/db
             - name: pb-db-ssl-client-cert
@@ -28,27 +28,27 @@ spec:
               mountPath: /pillsbury/config/db_certs/client-key
             - name: pb-db-ssl-server-ca
               mountPath: /pillsbury/config/db_certs/server-ca
-            - name: pb-ethereum-master-key
-              mountPath: /pillsbury/config/ethereum-master-key
-            - name: pb-ethereum-master-key-pw
-              mountPath: /pillsbury/config/ethereum-master-key-pw
+            - name: pb-ethereum-hub-key
+              mountPath: /pillsbury/config/ethereum-hub-key
+            - name: pb-ethereum-hub-config
+              mountPath: /pillsbury/config/ethereum-hub-config
           env:
             - name: NODE_ENV
               value: production
-            - name: ETHEREUM_SENDER_CONFIG
-              value: "/pillsbury/config/ethereum-sender/json"
+            - name: ETHEREUM_NODE_CONFIG
+              value: "/pillsbury/config/ethereum-node/json"
             - name: DB_CONFIG
               value: "/pillsbury/config/db/json"
             - name: DB_NAME
               value: "glaze"
-            - name: MASTER_KEY
-              value: "/pillsbury/config/ethereum-master-key/json"
-            - name: MASTER_KEY_PW
-              value: "/pillsbury/config/ethereum-master-key-pw/json"
+            - name: ETHEREUM_HUB_KEY
+              value: "/pillsbury/config/ethereum-hub-key/json"
+            - name: ETHEREUM_HUB_CONFIG
+              value: "/pillsbury/config/ethereum-hub-config/json"
       volumes:
-        - name: pb-ethereum-sender-config
+        - name: pb-ethereum-node-config
           secret:
-            secretName: pb-ethereum-sender-config
+            secretName: pb-ethereum-node-config
             defaultMode: 0400
         - name: pb-db-config
           secret:
@@ -66,11 +66,11 @@ spec:
           secret:
             secretName: pb-db-ssl-server-ca
             defaultMode: 0400
-        - name: pb-ethereum-master-key
+        - name: pb-ethereum-hub-key
           secret:
-            secretName: pb-ethereum-master-key
+            secretName: pb-ethereum-hub-key
             defaultMode: 0400
-        - name: pb-ethereum-master-key-pw
+        - name: pb-ethereum-hub-config
           secret:
-            secretName: pb-ethereum-master-key-pw
+            secretName: pb-ethereum-hub-config
             defaultMode: 0400

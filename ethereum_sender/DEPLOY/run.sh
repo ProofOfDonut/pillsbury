@@ -1,8 +1,8 @@
 #!/bin/bash
 
 node ethereum_sender/runner \
-    --config "$ETHEREUM_SENDER_CONFIG" \
-    --master_key "$MASTER_KEY" \
-    --master_key_pw "$MASTER_KEY_PW" \
+    --ethereum_node_config "$ETHEREUM_NODE_CONFIG" \
+    --ethereum_hub_key "$ETHEREUM_HUB_KEY" \
+    --ethereum_hub_config "$ETHEREUM_HUB_CONFIG" \
     --db_config "$DB_CONFIG" \
     --db_name "$DB_NAME"

@@ -60,6 +60,7 @@ type PropTypes = {
   defaultWithdrawalAddress: string;
   getDepositId: () => Promise<string>;
   getContractAddress: () => Promise<string>;
+  getRedditLoginConfig: () => [string, string]|undefined;
 };
 type State = {};
 class App extends PureComponent<PropTypes, State> {
@@ -96,7 +97,16 @@ class App extends PureComponent<PropTypes, State> {
       return <SplashPage />;
     }
     if (!this.props.user) {
-      return <LoginPage csrfToken={this.props.csrfToken} />;
+      const redditLoginConfig = this.props.getRedditLoginConfig();
+      if (redditLoginConfig) {
+        const [redditClientId, redditRedirectUri] = redditLoginConfig;
+        return <LoginPage
+            csrfToken={this.props.csrfToken}
+            redditClientId={redditClientId}
+            redditRedirectUri={redditRedirectUri} />;
+      } else {
+        return <SplashPage />;
+      }
     }
     return (
       <Chrome pathname={this.props.pathname}

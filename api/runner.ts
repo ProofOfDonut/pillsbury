@@ -1,11 +1,13 @@
-ort * as minimist from 'minimist';
+import * as minimist from 'minimist';
 import {join} from 'path';
 import {ensurePropString} from '../common/ensure';
+import {parseHostAndPort} from '../common/strings/host_and_port';
 import {createGlazeDbClientFromConfigFile} from '../glaze_db';
 import {ApiServer} from './server';
 import {routeAsset} from './endpoints/asset';
 import {routeAssetContract} from './endpoints/asset/contract';
 import {routeAssetWithdraw} from './endpoints/asset/withdraw';
+import {routeRedditConfig} from './endpoints/reddit/config';
 import {routeRedditLogin} from './endpoints/reddit/login';
 import {
   routeUserAvailableErc20Withdrawals,
@@ -18,17 +20,23 @@ import {routeUserLogout} from './endpoints/user/logout';
 
 const args = minimist(process.argv.slice(2));
 const configFile = ensurePropString(args, 'config');
-const masterKeyFile = ensurePropString(args, 'master_key');
-const masterKeyPwFile = ensurePropString(args, 'master_key_pw');
+const ethereumNodeConfigFile = ensurePropString(args, 'ethereum_node_config');
+const ethereumHubKeyFile = ensurePropString(args, 'ethereum_hub_key');
+const ethereumHubConfigFile = ensurePropString(args, 'ethereum_hub_config');
+const redditHubConfigFile = ensurePropString(args, 'reddit_hub_config');
 const dbConfigFile = ensurePropString(args, 'db_config');
 const dbName = ensurePropString(args, 'db_name');
+const [redditPuppetHost, redditPuppetPort] =
+    parseHostAndPort(ensurePropString(args, 'reddit_puppet'));
 
 async function main() {
   const glazeDb = await createGlazeDbClientFromConfigFile(dbConfigFile, dbName);
   const apiServer = new ApiServer(
       configFile,
-      masterKeyFile,
-      masterKeyPwFile,
+      ethereumHubKeyFile,
+      ethereumHubConfigFile,
+      ethereumNodeConfigFile,
+      redditHubConfigFile,
       glazeDb);
   const apiConfig = await apiServer.config;
 
@@ -38,8 +46,9 @@ async function main() {
       apiServer,
       glazeDb,
       apiConfig.redditClient,
-      apiConfig.redditPuppetHost,
-      apiConfig.redditPuppetPort);
+      redditPuppetHost,
+      redditPuppetPort);
+  routeRedditConfig(apiServer);
   routeRedditLogin(apiServer, glazeDb);
   routeUserAvailableErc20Withdrawals(apiServer, glazeDb);
   routeUserBalances(apiServer, glazeDb);

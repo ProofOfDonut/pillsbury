@@ -4,21 +4,24 @@ import {
 } from '../common/ensure';
 import {readFile} from '../common/io/files/read';
 import {formatNumber} from '../common/numbers/format';
+import {parseHostAndPort} from '../common/strings/host_and_port';
 import {AssetSymbol} from '../common/types/Asset';
-import {RedditClient} from '../lib/reddit';
+import {RedditClient, createRedditClientFromConfigFile} from '../lib/reddit';
 import {GlazeDbClient, createGlazeDbClientFromConfigFile} from '../glaze_db';
 import {sendRedditDonuts} from '../reddit_puppet';
 
 const args = minimist(process.argv.slice(2));
-const configFile = ensurePropString(args, 'config');
+const [redditPuppetHost, redditPuppetPort] =
+    parseHostAndPort(ensurePropString(args, 'reddit_puppet'));
+const redditHubConfigFile = ensurePropString(args, 'reddit_hub_config');
 const dbConfigFile = ensurePropString(args, 'db_config');
 const dbName = ensurePropString(args, 'db_name');
 
 async function main() {
-  const [{redditPuppetHost, redditPuppetPort, redditClient}, glazeDb]:
-      [Config, GlazeDbClient] =
+  const [redditClient, glazeDb]:
+      [RedditClient, GlazeDbClient] =
       await Promise.all([
-    readConfigFile(configFile),
+    createRedditClientFromConfigFile(redditHubConfigFile),
     createGlazeDbClientFromConfigFile(dbConfigFile, dbName),
   ]);
   const asset = await glazeDb.getAssetBySymbol(AssetSymbol.DONUT);
@@ -41,28 +44,6 @@ async function main() {
         `You have been refunded ${asset.name.format(refund.amount)} to your `
         + 'Reddit account.');
   }
-}
-
-type Config = {
-  redditPuppetHost: string;
-  redditPuppetPort: number;
-  redditClient: RedditClient;
-};
-
-async function readConfigFile(file: string): Promise<Config> {
-  const config = JSON.parse(<string> await readFile(file, 'utf8'));
-  const redditPuppetConfig = ensurePropObject(config, 'reddit-puppet');
-  const redditConfig = ensurePropObject(config, 'reddit');
-  const redditUsername = ensurePropString(redditConfig, 'username');
-  const redditPassword = ensurePropString(redditConfig, 'password');
-  const redditId = ensurePropString(redditConfig, 'id');
-  const redditSecret = ensurePropString(redditConfig, 'secret');
-  return {
-    redditPuppetHost: ensurePropString(redditPuppetConfig, 'host'),
-    redditPuppetPort: ensurePropSafeInteger(redditPuppetConfig, 'port'),
-    redditClient: new RedditClient(
-        redditUsername, redditPassword, redditId, redditSecret),
-  };
 }
 
 main();

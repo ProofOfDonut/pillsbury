@@ -30,8 +30,6 @@ type Config = {
   dashboardUrl: string;
   secureCookies: boolean;
   redditClient: RedditClient;
-  redditPuppetHost: string;
-  redditPuppetPort: number;
   ethereumClient: EthereumClient;
 };
 export class ApiServer {
@@ -43,8 +41,10 @@ export class ApiServer {
 
   constructor(
       configFile: string,
-      masterKeyFile: string,
-      masterKeyPwFile: string,
+      ethereumHubKeyFile: string,
+      ethereumHubConfigFile: string,
+      ethereumNodeConfigFile: string,
+      redditHubConfigFile: string,
       glazeDb: GlazeDbClient) {
     this.glazeDb = glazeDb;
     let readyResolve: (value: Ready) => void;
@@ -57,32 +57,44 @@ export class ApiServer {
     });
     this.app = this.initExpressApp(
         configFile,
-        masterKeyFile,
-        masterKeyPwFile,
+        ethereumHubKeyFile,
+        ethereumHubConfigFile,
+        ethereumNodeConfigFile,
+        redditHubConfigFile,
         readyResolve,
         configResolve);
   }
 
   private async initExpressApp(
       configFile: string,
-      masterKeyFile: string,
-      masterKeyPwFile: string,
+      ethereumHubKeyFile: string,
+      ethereumHubConfigFile: string,
+      ethereumNodeConfigFile: string,
+      redditHubConfigFile: string,
       readyResolve: (value: Ready) => void,
       configResolve: (value: Config) => void):
       Promise<Application> {
     const [
       configString,
-      masterKeyString,
-      masterKeyPwString,
-    ]: [string, string, string] = <[string, string, string]> await Promise.all([
+      ethereumHubKeyString,
+      ethereumHubConfigString,
+      ethereumNodeConfigString,
+      redditHubConfigString,
+    ]:
+        [string, string, string, string, string] =
+        <[string, string, string, string, string]> await Promise.all([
       readFile(configFile, 'utf8'),
-      readFile(masterKeyFile, 'utf8'),
-      readFile(masterKeyPwFile, 'utf8'),
+      readFile(ethereumHubKeyFile, 'utf8'),
+      readFile(ethereumHubConfigFile, 'utf8'),
+      readFile(ethereumNodeConfigFile, 'utf8'),
+      readFile(redditHubConfigFile, 'utf8'),
     ]);
     const config = JSON.parse(configString);
-    const masterKey = JSON.parse(masterKeyString);
-    const masterKeyPw =
-        ensurePropString(JSON.parse(masterKeyPwString), 'password');
+    const ethereumHubKey = JSON.parse(ethereumHubKeyString);
+    const ethereumHubPassword =
+        ensurePropString(JSON.parse(ethereumHubConfigString), 'password');
+    const ethereumNodeConfig = JSON.parse(ethereumNodeConfigString);
+    const redditHubConfig = JSON.parse(redditHubConfigString);
     // The "host" property should be set to `null` if no host is provided.
     const host = ensureProp(config, 'host') || undefined;
     ensure(typeof host == 'string' || host == undefined);
@@ -91,36 +103,29 @@ export class ApiServer {
     const allowedOrigins =
         <string[]> ensurePropArrayOfType(config, 'allowed-origins', 'string');
     const trustProxy = ensurePropSafeInteger(config, 'trust-proxy');
-    const clientId = ensurePropString(config, 'reddit-client-id');
-    const secret = ensurePropString(config, 'reddit-secret');
     const dashboardUrl = ensurePropString(config, 'dashboard-url');
     const secureCookies = ensurePropBoolean(config, 'secure-cookies');
-    const redditHubConfig = ensurePropObject(config, 'reddit-hub');
+    const redditLoginConfig = ensurePropObject(config, 'reddit-login');
+    const redditLoginId = ensurePropString(redditLoginConfig, 'id');
+    const redditLoginSecret = ensurePropString(redditLoginConfig, 'secret');
+    const ethereumNodeHost = ensurePropString(ethereumNodeConfig, 'host');
     const redditHubUsername = ensurePropString(redditHubConfig, 'username');
     const redditHubPassword = ensurePropString(redditHubConfig, 'password');
     const redditHubId = ensurePropString(redditHubConfig, 'id');
     const redditHubSecret = ensurePropString(redditHubConfig, 'secret');
-    const redditPuppetConfig = ensurePropObject(config, 'reddit-puppet');
-    const redditPuppetHost =
-        ensurePropString(redditPuppetConfig, 'host');
-    const redditPuppetPort =
-        ensurePropSafeInteger(redditPuppetConfig, 'port');
-    const ethereumClientConfig = ensurePropObject(config, 'ethereum-client');
 
     configResolve({
-      clientId,
-      secret,
+      clientId: redditLoginId,
+      secret: redditLoginSecret,
       baseUri,
       dashboardUrl,
       secureCookies,
       redditClient: new RedditClient(
           redditHubUsername, redditHubPassword, redditHubId, redditHubSecret),
-      redditPuppetHost,
-      redditPuppetPort,
       ethereumClient: createEthereumClient(
-          ensurePropString(ethereumClientConfig, 'host'),
-          masterKey,
-          masterKeyPw),
+          ethereumNodeHost,
+          ethereumHubKey,
+          ethereumHubPassword),
     });
 
     const originRegExp = originsToRegExp(allowedOrigins);

@@ -18,8 +18,8 @@ spec:
           ports:
             - containerPort: 8000
           volumeMounts:
-            - name: pb-ethereum-monitor-config
-              mountPath: /pillsbury/config/ethereum-monitor
+            - name: pb-ethereum-node-config
+              mountPath: /pillsbury/config/ethereum-node
             - name: pb-db-config
               mountPath: /pillsbury/config/db
             - name: pb-db-ssl-client-cert
@@ -31,16 +31,16 @@ spec:
           env:
             - name: NODE_ENV
               value: production
-            - name: ETHEREUM_MONITOR_CONFIG
-              value: "/pillsbury/config/ethereum-monitor/json"
+            - name: ETHEREUM_NODE_CONFIG
+              value: "/pillsbury/config/ethereum-node/json"
             - name: DB_CONFIG
               value: "/pillsbury/config/db/json"
             - name: DB_NAME
               value: "glaze"
       volumes:
-        - name: pb-ethereum-monitor-config
+        - name: pb-ethereum-node-config
           secret:
-            secretName: pb-ethereum-monitor-config
+            secretName: pb-ethereum-node-config
             defaultMode: 0400
         - name: pb-db-config
           secret:

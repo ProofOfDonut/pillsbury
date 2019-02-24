@@ -11,13 +11,16 @@ import {
 import {GlazeDbClient} from '../glaze_db';
 
 export async function createEthereumSender(
-    configFile: string,
+    ethereumNodeConfigFile: string,
     glazeDb: GlazeDbClient,
-    masterKeyFile: string,
-    masterKeyPwFile: string):
+    ethereumHubKeyFile: string,
+    ethereumHubConfigFile: string):
     Promise<EthereumSender> {
   return new EthereumSender(
-      await readConfig(configFile, masterKeyFile, masterKeyPwFile),
+      await readConfig(
+          ethereumNodeConfigFile,
+          ethereumHubKeyFile,
+          ethereumHubConfigFile),
       glazeDb);
 }
 
@@ -32,8 +35,8 @@ export class EthereumSender {
     this.config = config;
     this.ethereumClient = createEthereumClient(
         this.config.host,
-        this.config.masterKey,
-        this.config.masterKeyPw);
+        this.config.ethereumHubKey,
+        this.config.ethereumHubPassword);
     this.glazeDb = glazeDb;
 
     this.start();
@@ -75,34 +78,40 @@ export class EthereumSender {
 }
 
 async function readConfig(
-    configFile: string,
-    masterKeyFile: string,
-    masterKeyPwFile: string):
+    ethereumNodeConfigFile: string,
+    ethereumHubKeyFile: string,
+    ethereumHubConfigFile: string):
     Promise<Config> {
   const [
-    configString,
-    masterKeyString,
-    masterKeyPwString,
+    ethereumNodeConfigString,
+    ethereumHubKeyString,
+    ethereumHubConfigString,
   ]: [string, string, string] = <[string, string, string]> await Promise.all([
-    readFile(configFile, 'utf8'),
-    readFile(masterKeyFile, 'utf8'),
-    readFile(masterKeyPwFile, 'utf8'),
+    readFile(ethereumNodeConfigFile, 'utf8'),
+    readFile(ethereumHubKeyFile, 'utf8'),
+    readFile(ethereumHubConfigFile, 'utf8'),
   ]);
-  const config = JSON.parse(configString);
-  const masterKey = JSON.parse(masterKeyString);
-  const masterKeyPw =
-      ensurePropString(JSON.parse(masterKeyPwString), 'password');
-  return new Config(ensureObject(config), ensureObject(masterKey), masterKeyPw);
+  const ethereumNodeConfig = JSON.parse(ethereumNodeConfigString);
+  const ethereumHubKey = JSON.parse(ethereumHubKeyString);
+  const ethereumHubPassword =
+      ensurePropString(JSON.parse(ethereumHubConfigString), 'password');
+  return new Config(
+      ensureObject(ethereumNodeConfig),
+      ensureObject(ethereumHubKey),
+      ethereumHubPassword);
 }
 
 class Config {
   host: string;
-  masterKey: Object;
-  masterKeyPw: string;
+  ethereumHubKey: Object;
+  ethereumHubPassword: string;
 
-  constructor(info: Object, masterKey: Object, masterKeyPw: string) {
-    this.host = ensurePropString(info, 'host');
-    this.masterKey = masterKey;
-    this.masterKeyPw = masterKeyPw;
+  constructor(
+      nodeConfig: Object,
+      ethereumHubKey: Object,
+      ethereumHubPassword: string) {
+    this.host = ensurePropString(nodeConfig, 'host');
+    this.ethereumHubKey = ethereumHubKey;
+    this.ethereumHubPassword = ethereumHubPassword;
   }
 }

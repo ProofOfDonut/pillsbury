@@ -120,12 +120,19 @@ BEGIN
   IF _existing_deposit_limit IS NULL THEN
     _existing_deposit_limit := -1;
   END IF;
-  IF _existing_deposit_limit > -1 THEN
+  IF EXISTS (
+      SELECT 1
+          FROM vars
+          WHERE key = 'deliveries_enabled'
+              AND value = 'false') THEN
+    _limited_amount := 0;
+    _new_deposit_limit := _existing_deposit_limit;
+  ELSIF _existing_deposit_limit > -1 THEN
     _limited_amount := LEAST(_existing_deposit_limit, _amount);
     _new_deposit_limit := _existing_deposit_limit - _limited_amount;
   ELSE
     _limited_amount := _amount;
-    _new_deposit_limit := -1;
+    _new_deposit_limit := _existing_deposit_limit;
   END IF;
   IF _limited_amount <= 0 THEN
     _limited_amount := 0;
@@ -704,19 +711,6 @@ ALTER SEQUENCE public.erc20_deposits_id_seq OWNED BY public.erc20_deposits.id;
 
 
 --
--- Name: manually_applied_patches; Type: TABLE; Schema: public; Owner: pod_admin
---
-
-CREATE TABLE public.manually_applied_patches (
-    id text NOT NULL,
-    applied_time timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT manually_applied_patches_applied_time_check CHECK ((date_part('timezone'::text, applied_time) = (0)::double precision))
-);
-
-
-ALTER TABLE public.manually_applied_patches OWNER TO pod_admin;
-
---
 -- Name: nonces; Type: TABLE; Schema: public; Owner: pod_admin
 --
 
@@ -792,11 +786,34 @@ ALTER TABLE public.reddit_accounts OWNER TO pod_admin;
 CREATE TABLE public.refunds (
     user_id integer,
     amount integer,
-    refund_time timestamp with time zone DEFAULT now() NOT NULL
+    refund_time timestamp with time zone DEFAULT now() NOT NULL,
+    id integer NOT NULL,
+    success boolean DEFAULT true NOT NULL
 );
 
 
 ALTER TABLE public.refunds OWNER TO pod_admin;
+
+--
+-- Name: refunds_id_seq; Type: SEQUENCE; Schema: public; Owner: pod_admin
+--
+
+CREATE SEQUENCE public.refunds_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.refunds_id_seq OWNER TO pod_admin;
+
+--
+-- Name: refunds_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: pod_admin
+--
+
+ALTER SEQUENCE public.refunds_id_seq OWNED BY public.refunds.id;
+
 
 --
 -- Name: sessions; Type: TABLE; Schema: public; Owner: pod_admin
@@ -929,6 +946,13 @@ ALTER TABLE ONLY public.queued_transactions ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: refunds id; Type: DEFAULT; Schema: public; Owner: pod_admin
+--
+
+ALTER TABLE ONLY public.refunds ALTER COLUMN id SET DEFAULT nextval('public.refunds_id_seq'::regclass);
+
+
+--
 -- Name: users id; Type: DEFAULT; Schema: public; Owner: pod_admin
 --
 
@@ -1012,14 +1036,6 @@ ALTER TABLE ONLY public.deliveries
 
 ALTER TABLE ONLY public.erc20_deposits
     ADD CONSTRAINT erc20_deposits_pkey PRIMARY KEY (id);
-
-
---
--- Name: manually_applied_patches manually_applied_patches_pkey; Type: CONSTRAINT; Schema: public; Owner: pod_admin
---
-
-ALTER TABLE ONLY public.manually_applied_patches
-    ADD CONSTRAINT manually_applied_patches_pkey PRIMARY KEY (id);
 
 
 --
@@ -1192,3 +1208,4 @@ ALTER TABLE ONLY public.withdrawals
 --
 -- PostgreSQL database dump complete
 --
+

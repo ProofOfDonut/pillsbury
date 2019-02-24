@@ -30,11 +30,11 @@ const TMP_DIR = new Promise(
   });
 });
 
-export async function createRedditSenderEngine(
+export async function createRedditPuppetEngine(
     username: string,
     password: string,
     glazeDb: GlazeDbClient):
-    Promise<RedditSenderEngine> {
+    Promise<RedditPuppetEngine> {
   const browser = await puppeteer.launch({
     'args': ['--no-sandbox'],
     'defaultViewport': {
@@ -44,10 +44,10 @@ export async function createRedditSenderEngine(
       'height': 800,
     },
   });
-  return new RedditSenderEngine(browser, username, password, glazeDb);
+  return new RedditPuppetEngine(browser, username, password, glazeDb);
 }
 
-export class RedditSenderEngine {
+export class RedditPuppetEngine {
   private browser: Browser;
   private hubUsername: string;
   private hubPassword: string;

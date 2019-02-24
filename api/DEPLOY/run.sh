@@ -2,7 +2,10 @@
 
 node api/runner \
     --config "$API_CONFIG" \
-    --master_key "$MASTER_KEY" \
-    --master_key_pw "$MASTER_KEY_PW" \
+    --ethereum_node_config "$ETHEREUM_NODE_CONFIG" \
+    --ethereum_hub_key "$ETHEREUM_HUB_KEY" \
+    --ethereum_hub_config "$ETHEREUM_HUB_CONFIG" \
+    --reddit_hub_config "$REDDIT_HUB_CONFIG" \
+    --reddit_puppet "$REDDIT_PUPPET_HOST:$REDDIT_PUPPET_PORT" \
     --db_config "$DB_CONFIG" \
     --db_name "$DB_NAME"

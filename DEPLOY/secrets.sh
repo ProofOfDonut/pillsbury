@@ -37,8 +37,8 @@ kubectl create secret generic pb-ethereum-monitor-config \
     --from-file=json="$sdir/ethereum_monitor.prod.json"
 kubectl create secret generic pb-ethereum-sender-config \
     --from-file=json="$sdir/ethereum_sender.prod.json"
-kubectl create secret generic pb-reddit-monitor-config \
-    --from-file=json="$sdir/reddit_monitor.prod.json"
+kubectl create secret generic pb-reddit-delivery-monitor-config \
+    --from-file=json="$sdir/reddit_delivery_monitor.prod.json"
 kubectl create secret generic pb-reddit-puppet-config \
     --from-file=json="$sdir/reddit_puppet.prod.json"
 kubectl create secret generic pb-reddit-refunder-config \

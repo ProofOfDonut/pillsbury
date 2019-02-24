@@ -7,13 +7,13 @@ import {EthereumClient, createEthereumClient} from '../lib/ethereum';
 import {GlazeDbClient} from '../glaze_db';
 
 export async function createEthereumMonitor(
-    configFile: string,
+    ethereumNodeConfigFile: string,
     glazeDb: GlazeDbClient):
     Promise<EthereumMonitor> {
   const asset = await glazeDb.getAssetBySymbol(AssetSymbol.DONUT);
   const contract = await glazeDb.getAssetContractDetails(asset.id, 1);
   return new EthereumMonitor(
-      await readConfig(configFile),
+      await readEthereumNodeConfig(ethereumNodeConfigFile),
       glazeDb,
       asset.id,
       contract.address,
@@ -21,12 +21,12 @@ export async function createEthereumMonitor(
 }
 
 export class EthereumMonitor {
-  private config: Config;
+  private config: EthereumNodeConfig;
   private ethereumClient: EthereumClient;
   private glazeDb: GlazeDbClient;
 
   constructor(
-      config: Config,
+      config: EthereumNodeConfig,
       glazeDb: GlazeDbClient,
       tokenAssetId: number,
       tokenAddress: string,
@@ -68,12 +68,14 @@ export class EthereumMonitor {
   }
 }
 
-async function readConfig(file: string): Promise<Config> {
+async function readEthereumNodeConfig(
+    file: string):
+    Promise<EthereumNodeConfig> {
   const info = JSON.parse(<string> await readFile(file, 'utf8'));
-  return new Config(ensureObject(info));
+  return new EthereumNodeConfig(ensureObject(info));
 }
 
-class Config {
+class EthereumNodeConfig {
   host: string;
 
   constructor(info: Object) {
