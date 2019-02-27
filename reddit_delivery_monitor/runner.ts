@@ -3,7 +3,6 @@ import {sleep} from  '../common/async/sleep';
 import {
   ensurePropNumber, ensurePropObject, ensurePropString,
 } from '../common/ensure';
-import {readFile} from '../common/io/files/read';
 import {parseHostAndPort} from '../common/strings/host_and_port';
 import {RedditClient, createRedditClientFromConfigFile} from '../lib/reddit';
 import {GlazeDbClient, createGlazeDbClientFromConfigFile} from '../glaze_db';

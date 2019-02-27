@@ -37,17 +37,14 @@ export class GlazeDbClient {
   }
 
   async getLastDeliveryId(): Promise<string> {
-    const rows = await this.pgClient.query`
+    const row = this.maybeOne(await this.pgClient.query`
       SELECT reddit_message_id
           FROM deliveries
           ORDER BY sent_time DESC
-          LIMIT 1;`;
-    ensureArray(rows);
-    if (rows.length == 0) {
+          LIMIT 1;`);
+    if (!row) {
       return '';
     }
-    ensureEqual(rows.length, 1);
-    const row = <Object> ensureObject(rows[0]);
     return ensurePropString(row, 'reddit_message_id');
   }
 
@@ -436,9 +433,68 @@ export class GlazeDbClient {
     throw new Error(`Unexpected deliveries_enabled value "${value}".`);
   }
 
+  async getSubredditIdByRedditId(redditId: string): Promise<number> {
+    const row = this.ensureOne(await this.pgClient.query`
+      SELECT id FROM subreddits WHERE reddit_id = ${redditId};`);
+    return ensurePropSafeInteger(row, 'id');
+  }
+
+  // Return value indicates the number of points found in excess of what was
+  // expected. If fewer points are found than expected, then the number will be
+  // negative.
+  async logSubredditBalance(
+      subredditId: number,
+      amount: number):
+      Promise<number> {
+    const expectedAmount = await this.getExpectedRedditHubBalance();
+    // Only log when the balance changes.
+    const row = this.maybeOne(await this.pgClient.query`
+      SELECT amount, expected_amount
+          FROM subreddit_balance_logs
+          WHERE subreddit_id = ${subredditId}
+          ORDER BY creation_time DESC
+          LIMIT 1;`);
+    let oldAmount: number = 0;
+    let oldExpectedAmount: number = 0;
+    if (row) {
+      oldAmount = ensurePropSafeInteger(row, 'amount');
+      oldExpectedAmount = ensurePropSafeInteger(row, 'expected_amount');
+    }
+    if (amount != oldAmount || expectedAmount != oldExpectedAmount) {
+      await this.pgClient.query`
+          INSERT INTO subreddit_balance_logs
+              (subreddit_id, amount, expected_amount)
+              VALUES (${subredditId}, ${amount}, ${expectedAmount});`;
+    }
+    return amount - expectedAmount;
+  }
+
+  // Returns the balance that's expected to be held in the Reddit hub accounts.
+  private async getExpectedRedditHubBalance(): Promise<number> {
+    const row = this.ensureOne(await this.pgClient.query`
+      SELECT
+          (SELECT coalesce(sum(deposited_amount), 0)
+              FROM deliveries
+              WHERE asset_id = 1)
+          - (SELECT coalesce(sum(amount), 0)
+              FROM withdrawals
+              WHERE asset_id = 1
+                  AND (recipient).type = 'reddit_user'
+                  AND success) AS sum;`);
+    return ensureSafeInteger(+ensurePropString(row, 'sum'));
+  }
+
   private ensureOne(rows: any): Object {
     const R = ensureArray(rows);
     ensureEqual(rows.length, 1);
     return ensureObject(rows[0]);
+  }
+
+  private maybeOne(rows: any): Object|null {
+    ensureArray(rows);
+    if (rows.length == 0) {
+      return null;
+    }
+    return this.ensureOne(rows);
   }
 }

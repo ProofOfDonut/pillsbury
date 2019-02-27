@@ -1,6 +1,7 @@
 import {ensure, ensureSafeInteger} from '../../common/ensure';
 import {Method, request} from '../../common/net/request';
 import {GlazeDbClient} from '../../glaze_db';
+import {withToken} from './token';
 
 const SUBREDDIT_ID = 't5_37jgj';
 const TRANSFER_URL =
@@ -17,35 +18,11 @@ export async function sendRedditDonuts(
   ensure(/^[\w\-]{1,30}$/.test(recipient), `Invalid recipient "${recipient}".`);
   ensureSafeInteger(amount);
 
-  let token = await glazeDb.getRedditHubBearerToken();
-  let fetchedNewToken = false;
-  if (!token) {
-    token = await fetchNewToken(glazeDb, puppetHost, puppetPort);
-    fetchedNewToken = true;
-  }
-  try {
-    await callTransferEndpoint(token, recipient, amount);
-  } catch (err) {
-    // If we didn't just update the token, try again with a new token because
-    // the old one may have expired.
-    if (!fetchedNewToken) {
-      token = await fetchNewToken(glazeDb, puppetHost, puppetPort);
-      await callTransferEndpoint(token, recipient, amount);
-    } else {
-      throw err;
-    }
-  }
-}
-
-async function fetchNewToken(
-    glazeDb: GlazeDbClient,
-    host: string,
-    port: number):
-    Promise<string> {
-  await request(
-      Method.POST,
-      `http://${host}:${port}/update-reddit-hub-bearer-token`);
-  return ensure(await glazeDb.getRedditHubBearerToken());
+  await withToken(
+      glazeDb,
+      puppetHost,
+      puppetPort,
+      (token: string) => callTransferEndpoint(token, recipient, amount));
 }
 
 async function callTransferEndpoint(

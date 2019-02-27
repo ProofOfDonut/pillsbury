@@ -1,25 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pb-reddit-delivery-monitor
+  name: pb-reddit-balance-monitor
 spec:
   replicas: 1
   selector:
     matchLabels:
-      name: pb-reddit-delivery-monitor
+      name: pb-reddit-balance-monitor
   template:
     metadata:
       labels:
-        name: pb-reddit-delivery-monitor
+        name: pb-reddit-balance-monitor
     spec:
       containers:
-        - name: pb-reddit-delivery-monitor
-          image: gcr.io/silver-harmony-228021/reddit-delivery-monitor:$image_version
+        - name: pb-reddit-balance-monitor
+          image: gcr.io/silver-harmony-228021/reddit-balance-monitor:$image_version
           ports:
             - containerPort: 8000
           volumeMounts:
-            - name: pb-reddit-hub-config
-              mountPath: /pillsbury/config/reddit-hub
             - name: pb-db-config
               mountPath: /pillsbury/config/db
             - name: pb-db-ssl-client-cert
@@ -31,8 +29,6 @@ spec:
           env:
             - name: NODE_ENV
               value: production
-            - name: REDDIT_HUB_CONFIG
-              value: "/pillsbury/config/reddit-hub/json"
             - name: DB_CONFIG
               value: "/pillsbury/config/db/json"
             - name: DB_NAME
@@ -42,10 +38,6 @@ spec:
             - name: REDDIT_PUPPET_PORT
               value: 8000
       volumes:
-        - name: pb-reddit-hub-config
-          secret:
-            secretName: pb-reddit-hub-config
-            defaultMode: 0400
         - name: pb-db-config
           secret:
             secretName: pb-db-config

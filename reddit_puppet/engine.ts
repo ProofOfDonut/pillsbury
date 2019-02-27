@@ -11,9 +11,9 @@ import {GlazeDbClient} from '../glaze_db';
 // thought multiple attempts might help, but since then I think those problems
 // have been resolved.
 const SIGN_IN_ATTEMPTS = 2;
-const SUBREDDIT_ID = 't5_37jgj';
+// This URL is requested for both the new Reddit design and the old design.
 const BEARER_INTERCEPT_URL =
-    `https://meta-api.reddit.com/ratings/${SUBREDDIT_ID}/points-weekly`;
+    `https://s.reddit.com/api/v1/sendbird/unread_message_count`;
 
 const TMP_DIR = new Promise(
     (resolve: (dir: string) => void,
@@ -103,7 +103,7 @@ export class RedditPuppetEngine {
           }
           request.continue();
         });
-        await this.goToEthTraderLoggedIn(page);
+        await this.signInIfNecessary(page);
         tm = setTimeout(() => {
           if (!resolved) {
             reject(new Error('Timed out waiting for bearer intercept URL.'));
@@ -130,32 +130,50 @@ export class RedditPuppetEngine {
   }
 
   private async goToEthTraderLoggedIn(page: Page) {
+    await this.signInIfNecessary(page);
+    if (page.url() != 'https://new.reddit.com/r/ethtrader') {
+      await Promise.all([
+        page.goto('https://new.reddit.com/r/ethtrader'),
+        page.waitForNavigation({ waitUntil: 'networkidle0' }),
+      ]);
+    }
+    ensureEqual(page.url(), 'https://new.reddit.com/r/ethtrader');
+    return page;
+  }
+
+  private async signInIfNecessary(page: Page) {
     for (let i = 0; i < SIGN_IN_ATTEMPTS - 1; i++) {
       try {
-        await this.goToEthTraderLoggedInInner(page);
+        await this.signInIfNecessaryInner(page);
       } catch (err) {
         continue;
       }
       return;
     }
     // One last try that's not caught, propogating the exception if it fails.
-    await this.goToEthTraderLoggedInInner(page);
+    await this.signInIfNecessaryInner(page);
   }
 
-  private async goToEthTraderLoggedInInner(page: Page) {
+  private async signInIfNecessaryInner(page: Page) {
     await Promise.all([
       page.goto(
           'https://old.reddit.com/login?dest=https%3A%2F%2Fnew.reddit.com%2Fr%2Fethtrader'),
       page.waitForNavigation({ waitUntil: 'networkidle0' }),
     ]);
-    if (page.url() != 'https://new.reddit.com/r/ethtrader') {
+    if (page.url() != 'https://new.reddit.com/r/ethtrader'
+        // Some accounts have observed with a restriction preventing it from
+        // loading the Reddit redesign, in which case they are redirected to
+        // www.reddit.com.
+        && page.url() != 'https://www.reddit.com/r/ethtrader'
+        && page.url() != 'https://www.reddit.com/r/ethtrader/') {
       await this.signIn(page);
     }
-    ensureEqual(page.url(), 'https://new.reddit.com/r/ethtrader');
-    return page;
   }
 
   private async signIn(page: Page) {
+    ensure(
+        /^https\:\/\/old\.reddit\.com\/login/.test(page.url()),
+        `Incorrect page url "${page.url()}"`);
     let userNameInput: ElementHandle|null = null;
     let passwordInput: ElementHandle|null = null;
     let button: ElementHandle|null = null;
@@ -267,7 +285,7 @@ export class RedditPuppetEngine {
     } catch (err) {
       const ssPath = join(await TMP_DIR, 'ss_on_error.png');
       await page.screenshot({'path': ssPath});
-      console.log(`Saved screenshot to ${ssPath}`);
+      console.log(`Saved screenshot to ${ssPath} for URL ${page.url()}`);
       throw err;
     } finally {
       await page.close();
