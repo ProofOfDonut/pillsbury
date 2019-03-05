@@ -28,14 +28,14 @@ spec:
               mountPath: /pillsbury/config/ethereum-hub
             - name: pb-reddit-hub-config
               mountPath: /pillsbury/config/reddit-hub
+            - name: pb-reddit-login-config
+              mountPath: /pillsbury/config/reddit-login
+            - name: pb-contract-config
+              mountPath: /pillsbury/config/contracts
             - name: pb-db-config
               mountPath: /pillsbury/config/db
-            - name: pb-db-ssl-client-cert
-              mountPath: /pillsbury/config/db_certs/client-cert
-            - name: pb-db-ssl-client-key
-              mountPath: /pillsbury/config/db_certs/client-key
-            - name: pb-db-ssl-server-ca
-              mountPath: /pillsbury/config/db_certs/server-ca
+            - name: pb-db-user-config
+              mountPath: /pillsbury/config/db_user
           env:
             - name: NODE_ENV
               value: production
@@ -43,6 +43,8 @@ spec:
               value: "/pillsbury/config/api-server/json"
             - name: DB_CONFIG
               value: "/pillsbury/config/db/json"
+            - name: DB_USER_CONFIG
+              value: "/pillsbury/config/db-user/json"
             - name: DB_NAME
               value: "glaze"
             - name: ETHEREUM_NODE_CONFIG
@@ -51,8 +53,12 @@ spec:
               value: "/pillsbury/config/ethereum-hub-key/json"
             - name: ETHEREUM_HUB_CONFIG
               value: "/pillsbury/config/ethereum-hub/json"
+            - name: CONTRACT_CONFIG
+              value: "/pillsbury/config/contracts/json"
             - name: REDDIT_HUB_CONFIG
               value: "/pillsbury/config/reddit-hub/json"
+            - name: REDDIT_HUB_CONFIG
+              value: "/pillsbury/config/reddit-login/json"
             - name: REDDIT_PUPPET_HOST
               value: "pb-reddit-puppet"
             - name: REDDIT_PUPPET_PORT
@@ -78,19 +84,19 @@ spec:
           secret:
             secretName: pb-reddit-hub-config
             defaultMode: 0400
+        - name: pb-reddit-login-config
+          secret:
+            secretName: pb-reddit-login-config
+            defaultMode: 0400
+        - name: pb-contract-config
+          secret:
+            secretName: pb-contract-config
+            defaultMode: 0400
         - name: pb-db-config
           secret:
             secretName: pb-db-config
             defaultMode: 0400
-        - name: pb-db-ssl-client-cert
+        - name: pb-db-user-config
           secret:
-            secretName: pb-db-ssl-client-cert
-            defaultMode: 0400
-        - name: pb-db-ssl-client-key
-          secret:
-            secretName: pb-db-ssl-client-key
-            defaultMode: 0400
-        - name: pb-db-ssl-server-ca
-          secret:
-            secretName: pb-db-ssl-server-ca
+            secretName: pb-db-user-config
             defaultMode: 0400

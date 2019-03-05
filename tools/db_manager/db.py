@@ -11,11 +11,11 @@ import subprocess
 
 _HOME_DIR = os.path.expanduser('~')
 
-_config_info_path = None
+_config_info_paths = []
 
-def set_config_file(file):
-    global _config_info_path
-    _config_info_path = file
+def set_config_files(files):
+    global _config_info_paths
+    _config_info_paths = files
 
 def connect_repl(db_name=None):
     env, params = _get_subprocess_params(db_name=db_name)
@@ -94,7 +94,10 @@ def _get_db_config():
     return config, env
 
 def _get_db_config_object():
-    if _config_info_path is None:
+    if len(_config_info_paths) == 0:
         raise Exception('Config file location has not been configured.')
-    with open(_config_info_path) as connection_info:
-        return json.load(connection_info)
+    obj = dict()
+    for file in _config_info_paths:
+        with open(file) as info:
+            obj.update(json.load(info))
+    return obj

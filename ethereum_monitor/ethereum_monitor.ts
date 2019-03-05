@@ -8,16 +8,20 @@ import {GlazeDbClient} from '../glaze_db';
 
 export async function createEthereumMonitor(
     ethereumNodeConfigFile: string,
-    glazeDb: GlazeDbClient):
+    glazeDb: GlazeDbClient,
+    getContractAddress: (chainId: number, assetId: number) => string):
     Promise<EthereumMonitor> {
   const asset = await glazeDb.getAssetBySymbol(AssetSymbol.DONUT);
-  const contract = await glazeDb.getAssetContractDetails(asset.id, 1);
+  const {abi} = await glazeDb.getAssetContractDetails(asset.id);
+  // TODO: Make chain ID configurable.
+  const chainId = 1;
+  const address = getContractAddress(chainId, asset.id);
   return new EthereumMonitor(
       await readEthereumNodeConfig(ethereumNodeConfigFile),
       glazeDb,
       asset.id,
-      contract.address,
-      contract.abi);
+      address,
+      abi);
 }
 
 export class EthereumMonitor {

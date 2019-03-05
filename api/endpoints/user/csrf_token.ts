@@ -29,5 +29,5 @@ async function handleUserCsrfToken(
   const csrfToken = await glazeDb.createCsrfToken();
   res
     .set('Content-Type', 'application/json; charset=utf-8')
-    .end(JSON.stringify({token: csrfToken}));
+    .end(JSON.stringify({'token': csrfToken}));
 };

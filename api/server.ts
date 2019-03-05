@@ -3,13 +3,18 @@ import * as cookieParser from 'cookie-parser';
 import * as express from 'express';
 import {Application, Request, Response} from 'express';
 import {
+  GetContractAddress, readContractConfig,
+} from '../common/configs/contracts';
+import {
   ensure,
+  ensureInEnum,
   ensureProp,
   ensurePropArrayOfType,
   ensurePropBoolean,
   ensurePropObject,
   ensurePropSafeInteger,
   ensurePropString,
+  ensureSafeInteger,
 } from '../common/ensure';
 import {readFile} from '../common/io/files/read';
 import {HttpMethod} from '../common/net/http_method';
@@ -17,6 +22,7 @@ import {EthereumClient, createEthereumClient} from '../lib/ethereum';
 import {RedditClient} from '../lib/reddit';
 import {GlazeDbClient} from '../glaze_db';
 import {checkCsrfToken} from './csrf';
+import {filterConfigToExpressMiddleware} from './location_filter';
 import {getHeader} from './request';
 
 type Ready = {
@@ -31,6 +37,7 @@ type Config = {
   secureCookies: boolean;
   redditClient: RedditClient;
   ethereumClient: EthereumClient;
+  getContractAddress: GetContractAddress;
 };
 export class ApiServer {
   ready: Promise<Ready>;
@@ -45,6 +52,8 @@ export class ApiServer {
       ethereumHubConfigFile: string,
       ethereumNodeConfigFile: string,
       redditHubConfigFile: string,
+      redditLoginConfigFile: string,
+      contractConfigFile: string,
       glazeDb: GlazeDbClient) {
     this.glazeDb = glazeDb;
     let readyResolve: (value: Ready) => void;
@@ -61,6 +70,9 @@ export class ApiServer {
         ethereumHubConfigFile,
         ethereumNodeConfigFile,
         redditHubConfigFile,
+        redditLoginConfigFile,
+        contractConfigFile,
+        glazeDb,
         readyResolve,
         configResolve);
   }
@@ -71,6 +83,9 @@ export class ApiServer {
       ethereumHubConfigFile: string,
       ethereumNodeConfigFile: string,
       redditHubConfigFile: string,
+      redditLoginConfigFile: string,
+      contractConfigFile: string,
+      glazeDb: GlazeDbClient,
       readyResolve: (value: Ready) => void,
       configResolve: (value: Config) => void):
       Promise<Application> {
@@ -80,14 +95,21 @@ export class ApiServer {
       ethereumHubConfigString,
       ethereumNodeConfigString,
       redditHubConfigString,
+      redditLoginConfigString,
+      getContractAddress,
     ]:
-        [string, string, string, string, string] =
-        <[string, string, string, string, string]> await Promise.all([
+        [string, string, string, string, string, string, GetContractAddress] =
+        <[string, string, string, string, string, string, GetContractAddress]>
+        await Promise.all([
       readFile(configFile, 'utf8'),
       readFile(ethereumHubKeyFile, 'utf8'),
       readFile(ethereumHubConfigFile, 'utf8'),
       readFile(ethereumNodeConfigFile, 'utf8'),
       readFile(redditHubConfigFile, 'utf8'),
+      readFile(redditLoginConfigFile, 'utf8'),
+      readContractConfig(
+          contractConfigFile,
+          glazeDb.getAssetBySymbol.bind(glazeDb)),
     ]);
     const config = JSON.parse(configString);
     const ethereumHubKey = JSON.parse(ethereumHubKeyString);
@@ -95,6 +117,7 @@ export class ApiServer {
         ensurePropString(JSON.parse(ethereumHubConfigString), 'password');
     const ethereumNodeConfig = JSON.parse(ethereumNodeConfigString);
     const redditHubConfig = JSON.parse(redditHubConfigString);
+    const redditLoginConfig = JSON.parse(redditLoginConfigString);
     // The "host" property should be set to `null` if no host is provided.
     const host = ensureProp(config, 'host') || undefined;
     ensure(typeof host == 'string' || host == undefined);
@@ -105,7 +128,6 @@ export class ApiServer {
     const trustProxy = ensurePropSafeInteger(config, 'trust-proxy');
     const dashboardUrl = ensurePropString(config, 'dashboard-url');
     const secureCookies = ensurePropBoolean(config, 'secure-cookies');
-    const redditLoginConfig = ensurePropObject(config, 'reddit-login');
     const redditLoginId = ensurePropString(redditLoginConfig, 'id');
     const redditLoginSecret = ensurePropString(redditLoginConfig, 'secret');
     const ethereumNodeHost = ensurePropString(ethereumNodeConfig, 'host');
@@ -113,6 +135,8 @@ export class ApiServer {
     const redditHubPassword = ensurePropString(redditHubConfig, 'password');
     const redditHubId = ensurePropString(redditHubConfig, 'id');
     const redditHubSecret = ensurePropString(redditHubConfig, 'secret');
+    // The request filter is type checked elsewhere.
+    const requestFilter = config['request-filter'];
 
     configResolve({
       clientId: redditLoginId,
@@ -126,6 +150,7 @@ export class ApiServer {
           ethereumNodeHost,
           ethereumHubKey,
           ethereumHubPassword),
+      getContractAddress,
     });
 
     const originRegExp = originsToRegExp(allowedOrigins);
@@ -182,6 +207,8 @@ export class ApiServer {
 
       next();
     });
+
+    app.use(filterConfigToExpressMiddleware(requestFilter));
 
     app.listen(port, host, () => readyResolve({host, port}));
 

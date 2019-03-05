@@ -5,4 +5,5 @@ node ethereum_sender/runner \
     --ethereum_hub_key "$ETHEREUM_HUB_KEY" \
     --ethereum_hub_config "$ETHEREUM_HUB_CONFIG" \
     --db_config "$DB_CONFIG" \
+    --db_user_config "$DB_USER_CONFIG" \
     --db_name "$DB_NAME"

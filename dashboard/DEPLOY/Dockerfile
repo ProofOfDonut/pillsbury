@@ -1,4 +1,4 @@
-FROM gcr.io/silver-harmony-228021/node:v2
+FROM $registry/node:v2
 
 RUN mkdir -p /pillsbury
 COPY . /pillsbury/code

@@ -42,6 +42,7 @@ export class RedditPuppetServer {
       res.status(400).type('json').end(JSON.stringify({
         'message': 'Endpoint disabled.',
       }));
+      return;
 
       // const recipient = ensurePropString(req.params, 'to');
       // const amount = ensureSafeInteger(+ensurePropString(req.params, 'amount'));

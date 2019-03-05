@@ -110,9 +110,7 @@ function _request(
             case 422: // Unprocessable Entity
             case 500: // Internal Server Error
             case 503: // Service Not Available
-              console.log(response.statusCode, _url, JSON.stringify(fullHeaders, null, '  ')); // DEBUG
               response.on('data', (data: Buffer) => {
-                console.log('data:', data.toString('utf8')); // DEBUG
                 result.push(data);
               });
               response.on(

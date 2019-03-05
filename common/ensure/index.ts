@@ -220,3 +220,9 @@ export function ensureSafePositiveInteger(
   ensure(value > 0, message);
   return value;
 }
+
+export function ensureInEnum<T>(values: any, value: any): T {
+  ensure(Object.values(values).includes(value),
+      `Expected value (${value}) to be included in enum.`);
+  return <T> value;
+}

@@ -1,4 +1,4 @@
-FROM gcr.io/silver-harmony-228021/pod:$image_version
+FROM $registry/pod:$image_version
 
 WORKDIR /pillsbury/code
 CMD ["/pillsbury/code/api/DEPLOY/run.sh"]

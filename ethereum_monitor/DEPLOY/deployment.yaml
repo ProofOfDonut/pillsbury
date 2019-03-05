@@ -20,21 +20,23 @@ spec:
           volumeMounts:
             - name: pb-ethereum-node-config
               mountPath: /pillsbury/config/ethereum-node
+            - name: pb-contract-config
+              mountPath: /pillsbury/config/contracts
             - name: pb-db-config
               mountPath: /pillsbury/config/db
-            - name: pb-db-ssl-client-cert
-              mountPath: /pillsbury/config/db_certs/client-cert
-            - name: pb-db-ssl-client-key
-              mountPath: /pillsbury/config/db_certs/client-key
-            - name: pb-db-ssl-server-ca
-              mountPath: /pillsbury/config/db_certs/server-ca
+            - name: pb-db-user-config
+              mountPath: /pillsbury/config/db-user
           env:
             - name: NODE_ENV
               value: production
             - name: ETHEREUM_NODE_CONFIG
               value: "/pillsbury/config/ethereum-node/json"
+            - name: CONTRACT_CONFIG
+              value: "/pillsbury/config/contracts/json"
             - name: DB_CONFIG
               value: "/pillsbury/config/db/json"
+            - name: DB_USER_CONFIG
+              value: "/pillsbury/config/db-user/json"
             - name: DB_NAME
               value: "glaze"
       volumes:
@@ -42,19 +44,15 @@ spec:
           secret:
             secretName: pb-ethereum-node-config
             defaultMode: 0400
+        - name: pb-contract-config
+          secret:
+            secretName: pb-contract-config
+            defaultMode: 0400
         - name: pb-db-config
           secret:
             secretName: pb-db-config
             defaultMode: 0400
-        - name: pb-db-ssl-client-cert
+        - name: pb-db-user-config
           secret:
-            secretName: pb-db-ssl-client-cert
-            defaultMode: 0400
-        - name: pb-db-ssl-client-key
-          secret:
-            secretName: pb-db-ssl-client-key
-            defaultMode: 0400
-        - name: pb-db-ssl-server-ca
-          secret:
-            secretName: pb-db-ssl-server-ca
+            secretName: pb-db-user-config
             defaultMode: 0400

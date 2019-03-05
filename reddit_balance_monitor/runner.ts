@@ -3,7 +3,7 @@ import {sleep} from  '../common/async/sleep';
 import {ensure, ensurePropString} from '../common/ensure';
 import {formatNumber} from '../common/numbers/format';
 import {parseHostAndPort} from '../common/strings/host_and_port';
-import {GlazeDbClient, createGlazeDbClientFromConfigFile} from '../glaze_db';
+import {GlazeDbClient, createGlazeDbClientFromConfigFiles} from '../glaze_db';
 import {
   getCommunityPointBalance,
 } from '../reddit_puppet/call_helpers/get_balance';
@@ -14,14 +14,18 @@ const args = minimist(process.argv.slice(2));
 const [redditPuppetHost, redditPuppetPort] =
     parseHostAndPort(ensurePropString(args, 'reddit_puppet'));
 const dbConfigFile = ensurePropString(args, 'db_config');
+const dbUserConfigFile = ensurePropString(args, 'db_user_config');
 const dbName = ensurePropString(args, 'db_name');
 
 async function main() {
-  const glazeDb = await createGlazeDbClientFromConfigFile(dbConfigFile, dbName);
+  const glazeDb = await createGlazeDbClientFromConfigFiles(
+      dbConfigFile, dbUserConfigFile, dbName);
   ensure(/^t5_/.test(SUBREDDIT_REDDIT_ID));
   const redditId = SUBREDDIT_REDDIT_ID.slice(3);
   const subredditId =
       await glazeDb.getSubredditIdByRedditId(redditId);
+
+  console.log(`Monitoring subreddit ID "${redditId}".`);
 
   let lastDiff: number = 0;
   while (true) {

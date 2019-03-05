@@ -1,15 +1,18 @@
 #!/bin/bash
 set -e -o pipefail
 
-version="$1"
-if [ "$version" == '' ]; then
-  echo 'Expected version param.' >&2
+registry="$1"
+if [ "$registry" == '' ]; then
+  echo 'Expected container registry.' >&2
   exit 1
 fi
+shift
 
-project_filter="$2"
+project_filter="$1"
+shift
 
-repo='gcr.io/silver-harmony-228021'
+version=$(tools/git/get_latest_commit.sh)
+
 veiled_workspace=$(bin/veil pwd)
 
 function deploy() {
@@ -33,7 +36,7 @@ function deploy() {
   else
     yaml="$type.yaml"
   fi
-  bin/veil "sed 's/\$image_version/$version/g' \
+  bin/veil "sed 's/\$registry/$registry/g;s/\$image_version/$version/g' \
       < $project/DEPLOY/$yaml \
       > $project/DEPLOY/$yaml.out"
   bin/veil "kubectl apply -f $project/DEPLOY/$yaml.out"
@@ -51,7 +54,7 @@ function build_and_push() {
     exit 1
   fi
 
-  local tag="$repo/${project//_/-}:$version"
+  local tag="$registry/${project//_/-}:$version"
 
   bin/veil "sed 's/\$image_version/$version/g' \
       < $dir/Dockerfile \
@@ -90,14 +93,6 @@ if [ "$project_filter" != 'dashboard' ]; then
   build_and_push \
       tools/docker/base_images/pillsbury \
       pillsbury
-
-  if [ "$project_filter" == '' ] \
-      || [ "$project_filter" == 'reddit_puppet' ]; then
-    # Build base for reddit_puppet
-    build_and_push \
-        tools/docker/base_images/pillsbury_with_chrome \
-        pillsbury_with_chrome
-  fi
 fi
 
 deploy api

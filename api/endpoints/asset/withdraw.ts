@@ -19,7 +19,8 @@ export function routeAssetWithdraw(
       glazeDb: GlazeDbClient,
       redditClient: RedditClient,
       redditPuppetHost: string,
-      redditPuppetPort: number) {
+      redditPuppetPort: number,
+      getContractAddress: (chainId: number, assetId: number) => string) {
   apiServer.addListener(
       HttpMethod.POST,
       '/asset::asset_id/withdraw::amount',
@@ -31,6 +32,7 @@ export function routeAssetWithdraw(
             redditPuppetHost,
             redditPuppetPort,
             apiServerConfig.ethereumClient,
+            getContractAddress,
             req,
             res);
       });
@@ -42,6 +44,7 @@ async function handleAssetWithdraw(
     redditPuppetHost: string,
     redditPuppetPort: number,
     ethereumClient: EthereumClient,
+    getContractAddress: (chainId: number, assetId: number) => string,
     req: Request,
     res: Response):
     Promise<void> {
@@ -81,10 +84,13 @@ async function handleAssetWithdraw(
   } else {
     ensure(erc20WithdrawalsAllowed);
     ensureEqual(to.type, AccountType.ETHEREUM_ADDRESS);
-    const contract = await glazeDb.getAssetContractDetails(assetId, 1);
+    // TODO: Make chain ID a parameter?
+    const chainId = 1;
+    const address = getContractAddress(chainId, assetId);
+    const {abi} = await glazeDb.getAssetContractDetails(assetId);
     const tx = await ethereumClient.getMintTokenTransaction(
-        contract.address,
-        contract.abi,
+        address,
+        abi,
         to.value,
         amount);
     const queuedTransactionId = await glazeDb.enqueueTransaction(tx);

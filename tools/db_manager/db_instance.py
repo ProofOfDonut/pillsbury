@@ -6,8 +6,8 @@ import re
 
 _dev_mode = False
 
-def set_config_file(file):
-    db.set_config_file(file)
+def set_config_files(files):
+    db.set_config_files(files)
 
 def set_dev_mode(value):
     global _dev_mode

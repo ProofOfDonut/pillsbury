@@ -274,18 +274,14 @@ export class GlazeDbClient {
   }
 
   async getAssetContractDetails(
-      id: number,
-      chainId: number):
-      Promise<{address: string, abi: any}> {
+      id: number):
+      Promise<{abi: any}> {
     const row = this.ensureOne(await this.pgClient.query`
-      SELECT c.address, a.abi
-          FROM assets a
-          INNER JOIN contracts c
-              ON c.asset_id = a.id
-          WHERE a.id = ${id} AND c.chain_id = ${chainId}
+      SELECT abi
+          FROM assets
+          WHERE id = ${id}
           LIMIT 1;`);
     return {
-      address: ensurePropString(row, 'address'),
       abi: JSON.parse(ensurePropString(row, 'abi')),
     };
   }

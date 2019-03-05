@@ -354,8 +354,8 @@ def _get_command_from_args(argv):
 def set_patch_dir(dir):
     patch_reader.set_patch_dir(dir)
 
-def set_config_file(file):
-    db_instance.set_config_file(file)
+def set_config_files(files):
+    db_instance.set_config_files(files)
 
 def main(argv):
     schema_path = None
@@ -364,7 +364,7 @@ def main(argv):
         matches = re.search(r'^--(db_config|patches|schema)\=(.*)$', arg)
         if matches:
             if matches.group(1) == 'db_config':
-                set_config_file(matches.group(2))
+                set_config_files(matches.group(2).split(','))
             elif matches.group(1) == 'patches':
                 set_patch_dir(matches.group(2))
             elif matches.group(1) == 'schema':

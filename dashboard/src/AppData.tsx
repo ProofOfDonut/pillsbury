@@ -300,8 +300,7 @@ class AppData extends PureComponent<PropTypes, State> {
   private async loadAssetContractAddress(assetId: number): Promise<string> {
     const response = ensureObject(
         await this.apiRequest(HttpMethod.GET, `/asset:${assetId}/contract`));
-    const info = ensurePropObject(ensureObject(response), 'contract');
-    const address = ensurePropString(info, 'address');
+    const address = ensurePropString(ensureObject(response), 'address');
     this.setState({
       contractAddressByAssetId:
           this.state.contractAddressByAssetId.set(assetId, address),

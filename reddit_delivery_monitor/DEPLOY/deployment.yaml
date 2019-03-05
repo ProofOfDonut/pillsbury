@@ -22,12 +22,8 @@ spec:
               mountPath: /pillsbury/config/reddit-hub
             - name: pb-db-config
               mountPath: /pillsbury/config/db
-            - name: pb-db-ssl-client-cert
-              mountPath: /pillsbury/config/db_certs/client-cert
-            - name: pb-db-ssl-client-key
-              mountPath: /pillsbury/config/db_certs/client-key
-            - name: pb-db-ssl-server-ca
-              mountPath: /pillsbury/config/db_certs/server-ca
+            - name: pb-db-user-config
+              mountPath: /pillsbury/config/db-user
           env:
             - name: NODE_ENV
               value: production
@@ -35,6 +31,8 @@ spec:
               value: "/pillsbury/config/reddit-hub/json"
             - name: DB_CONFIG
               value: "/pillsbury/config/db/json"
+            - name: DB_USER_CONFIG
+              value: "/pillsbury/config/db-user/json"
             - name: DB_NAME
               value: "pillsbury"
             - name: REDDIT_PUPPET_HOST
@@ -50,15 +48,7 @@ spec:
           secret:
             secretName: pb-db-config
             defaultMode: 0400
-        - name: pb-db-ssl-client-cert
+        - name: pb-db-user-config
           secret:
-            secretName: pb-db-ssl-client-cert
-            defaultMode: 0400
-        - name: pb-db-ssl-client-key
-          secret:
-            secretName: pb-db-ssl-client-key
-            defaultMode: 0400
-        - name: pb-db-ssl-server-ca
-          secret:
-            secretName: pb-db-ssl-server-ca
+            secretName: pb-db-user-config
             defaultMode: 0400

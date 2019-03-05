@@ -1,6 +1,6 @@
 # Derived from https://paul.kinlan.me/hosting-puppeteer-in-a-docker-container/
 
-FROM gcr.io/silver-harmony-228021/pillsbury-with-chrome:$image_version
+FROM $registry/pillsbury:$image_version
 
 # Run everything after as non-privileged user.
 # USER pptruser
