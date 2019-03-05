@@ -7,6 +7,7 @@ import {HttpMethod} from '../../../common/net/http_method';
 import {formatNumber} from '../../../common/numbers/format';
 import {AssetSymbol, assetSymbolFromString} from '../../../common/types/Asset';
 import {Account, AccountType} from '../../../common/types/Account';
+import {QueuedTransaction} from '../../../common/types/QueuedTransaction';
 import {GlazeDbClient} from '../../../glaze_db';
 import {EthereumClient} from '../../../lib/ethereum';
 import {RedditClient} from '../../../lib/reddit';
@@ -76,10 +77,15 @@ async function handleAssetWithdraw(
     await sendRedditDonuts(
         glazeDb, redditPuppetHost, redditPuppetPort, to.value, amount);
     const formattedAmount = formatNumber(amount);
-    await redditClient.sendMessage(
-        to.value,
-        'Withdrawn donuts',
-        `You have withdrawn ${formattedAmount} donuts to your Reddit account.`);
+    try {
+      await redditClient.sendMessage(
+          to.value,
+          'Withdrawn donuts',
+          `You have withdrawn ${formattedAmount} donuts to your Reddit account.`);
+    } catch (err) {
+      glazeDb.withdrawalError(withdrawalId, String(err));
+      throw err;
+    }
     // TODO: Retrieve reddit ID.
     const redditId = '';
     await glazeDb.updateWithdrawal(withdrawalId, redditId);
@@ -91,11 +97,17 @@ async function handleAssetWithdraw(
     const chainId = 1;
     const address = getContractAddress(chainId, assetId);
     const {abi} = await glazeDb.getAssetContractDetails(assetId);
-    const tx = await ethereumClient.getMintTokenTransaction(
-        address,
-        abi,
-        to.value,
-        amount);
+    let tx: QueuedTransaction = null;
+    try {
+      tx = await ethereumClient.getMintTokenTransaction(
+          address,
+          abi,
+          to.value,
+          amount);
+    } catch (err) {
+      glazeDb.withdrawalError(withdrawalId, String(err));
+      throw err;
+    }
     const queuedTransactionId = await glazeDb.enqueueTransaction(tx);
     await glazeDb.updateWithdrawal(withdrawalId, queuedTransactionId);
     response = {'transaction_id': queuedTransactionId};

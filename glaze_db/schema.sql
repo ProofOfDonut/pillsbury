@@ -926,7 +926,8 @@ CREATE TABLE public.withdrawals (
     amount integer NOT NULL,
     transaction_id text,
     creation_time timestamp with time zone DEFAULT now() NOT NULL,
-    success boolean DEFAULT true NOT NULL
+    success boolean,
+    error text DEFAULT ''::text NOT NULL
 );
 
 

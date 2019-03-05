@@ -300,7 +300,16 @@ export class GlazeDbClient {
   async updateWithdrawal(id: number, transactionId: string): Promise<void> {
     await this.pgClient.query`
       UPDATE withdrawals
-          SET transaction_id = ${transactionId}
+          SET transaction_id = ${transactionId},
+              success = TRUE
+          WHERE id = ${id};`;
+  }
+
+  async withdrawalError(id: number, errorMessage: string): Promise<void> {
+    await this.pgClient.query`
+      UPDATE withdrawals
+          SET success = FALSE,
+              error = ${errorMessage}
           WHERE id = ${id};`;
   }
 
