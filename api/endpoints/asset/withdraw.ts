@@ -53,10 +53,13 @@ async function handleAssetWithdraw(
   const amount = ensureSafeInteger(+ensurePropString(req.params, 'amount'));
   const to = Account.fromJSON(ensurePropObject(req.body, 'to'));
 
-  const erc20WithdrawalsAllowed = await ethereumClient.withdrawalsAllowed();
-  if (to.type == AccountType.ETHEREUM_ADDRESS && !erc20WithdrawalsAllowed) {
-    throw new Error(
-        'ERC-20 withdrawals are currently suspended for all accounts.');
+  let erc20WithdrawalsAllowed: boolean|null = null;
+  if (to.type == AccountType.ETHEREUM_ADDRESS) {
+    erc20WithdrawalsAllowed = await ethereumClient.withdrawalsAllowed();
+    if (!erc20WithdrawalsAllowed) {
+      throw new Error(
+          'ERC-20 withdrawals are currently suspended for all accounts.');
+    }
   }
 
   const withdrawalId = await glazeDb.withdraw(

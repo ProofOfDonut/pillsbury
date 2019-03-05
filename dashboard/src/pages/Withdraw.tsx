@@ -9,7 +9,7 @@ import {User} from '../common/types/User';
 import AccountTypeBar from '../components/AccountTypeBar';
 import EmptyAccount from '../components/EmptyAccount';
 import WithdrawReddit from '../components/WithdrawReddit';
-import WithdrawTokensDisabled from '../components/WithdrawTokensDisabled';
+import WithdrawTokens from '../components/WithdrawTokens';
 
 type PropTypes = {
   user: User;
@@ -74,15 +74,14 @@ class WithdrawPage extends PureComponent<PropTypes, State> {
       return <CircularProgress />;
     }
     return (
-      <WithdrawTokensDisabled />
-      // <WithdrawToken
-      //     asset={asset}
-      //     balance={balance}
-      //     refreshBalances={this.props.refreshBalances}
-      //     availableErc20Withdrawals={availableErc20Withdrawals}
-      //     withdraw={(address: string, amount: number) =>
-      //         this.withdrawToEthereumAddress(asset, address, amount)}
-      //     defaultAddress={this.props.defaultAddress} />
+      <WithdrawTokens
+          asset={asset}
+          balance={balance}
+          refreshBalances={this.props.refreshBalances}
+          availableErc20Withdrawals={availableErc20Withdrawals}
+          withdraw={(address: string, amount: number) =>
+              this.withdrawToEthereumAddress(asset, address, amount)}
+          defaultAddress={this.props.defaultAddress} />
     );
   };
 

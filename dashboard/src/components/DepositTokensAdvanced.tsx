@@ -19,6 +19,9 @@ const styles = (theme: Theme) => ({
   advancedInstructions: {
     fontSize: '85%',
   },
+  detail: {
+    margin: '8px 0',
+  },
 });
 
 type PropTypes = {
@@ -27,18 +30,19 @@ type PropTypes = {
     title: string;
     abi: string;
     advancedInstructions: string;
+    detail: string;
   };
   getDepositId: () => Promise<string>;
   getContractAddress: () => Promise<string>;
+  enabled: boolean;
+  enable: (enabled: boolean) => void;
 };
 type State = {
-  enabled: boolean;
   depositId: string;
   contractAddress: string;
 };
 class DepositTokensAdvanced extends PureComponent<PropTypes, State> {
   state = {
-    enabled: false,
     depositId: '',
     contractAddress: '',
   };
@@ -66,10 +70,10 @@ class DepositTokensAdvanced extends PureComponent<PropTypes, State> {
   }
 
   private renderEnable() {
-    if (!this.state.enabled) {
+    if (!this.props.enabled) {
       return (
         <a href="#"
-            onClick={this.enable}>
+            onClick={() => this.props.enable(true)}>
           Enable
         </a>
       );
@@ -77,13 +81,9 @@ class DepositTokensAdvanced extends PureComponent<PropTypes, State> {
     return null;
   }
 
-  private enable = () => {
-    this.setState({enabled: true});
-  };
-
   private renderInstructions() {
     const classes = this.props.classes;
-    if (this.state.enabled) {
+    if (this.props.enabled) {
       return (
         <div>
           <p>
@@ -96,20 +96,21 @@ class DepositTokensAdvanced extends PureComponent<PropTypes, State> {
             {' '}
             <i>Make sure to copy the deposit ID correctly.</i>
           </p>
-          <p>
+          <div className={classes.detail}>
             <b>Contract Address: </b>
             {this.renderContractAddress()}
-          </p>
-          <p>
+          </div>
+          <div className={classes.detail}>
             <div><b>Contract ABI:</b></div>
-            <textarea className={classes.abi}>
-              {JSON.stringify(DEPOSITABLE_ABI)}
-            </textarea>
-          </p>
-          <p>
+            <textarea
+                className={classes.abi}
+                value={JSON.stringify(DEPOSITABLE_ABI)}
+                readOnly={true} />
+          </div>
+          <div className={classes.detail}>
             <b>Deposit ID: </b>
             {this.renderDepositId()}
-          </p>
+          </div>
         </div>
       );
     }

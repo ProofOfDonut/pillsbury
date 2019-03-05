@@ -295,6 +295,7 @@ BEGIN
       INTO _withdrawal_count
       FROM withdrawals
       WHERE from_user_id = _user_id
+          AND (recipient).type = 'ethereum_address'
           AND creation_time > now() - interval '1 day';
 
   RETURN GREATEST(0, _withdrawals_per_day - _withdrawal_count);
@@ -581,19 +582,6 @@ CREATE TABLE public.balances (
 ALTER TABLE public.balances OWNER TO pod_admin;
 
 --
--- Name: contracts; Type: TABLE; Schema: public; Owner: pod_admin
---
-
-CREATE TABLE public.contracts (
-    asset_id integer NOT NULL,
-    chain_id integer NOT NULL,
-    address public.citext NOT NULL
-);
-
-
-ALTER TABLE public.contracts OWNER TO pod_admin;
-
---
 -- Name: csrf_tokens; Type: TABLE; Schema: public; Owner: pod_admin
 --
 
@@ -831,6 +819,54 @@ CREATE TABLE public.sessions (
 ALTER TABLE public.sessions OWNER TO pod_admin;
 
 --
+-- Name: subreddit_balance_logs; Type: TABLE; Schema: public; Owner: pod_admin
+--
+
+CREATE TABLE public.subreddit_balance_logs (
+    subreddit_id integer NOT NULL,
+    amount integer NOT NULL,
+    expected_amount integer NOT NULL,
+    creation_time timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.subreddit_balance_logs OWNER TO pod_admin;
+
+--
+-- Name: subreddits; Type: TABLE; Schema: public; Owner: pod_admin
+--
+
+CREATE TABLE public.subreddits (
+    id integer NOT NULL,
+    subreddit public.citext NOT NULL,
+    reddit_id text NOT NULL
+);
+
+
+ALTER TABLE public.subreddits OWNER TO pod_admin;
+
+--
+-- Name: subreddits_id_seq; Type: SEQUENCE; Schema: public; Owner: pod_admin
+--
+
+CREATE SEQUENCE public.subreddits_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.subreddits_id_seq OWNER TO pod_admin;
+
+--
+-- Name: subreddits_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: pod_admin
+--
+
+ALTER SEQUENCE public.subreddits_id_seq OWNED BY public.subreddits.id;
+
+
+--
 -- Name: users; Type: TABLE; Schema: public; Owner: pod_admin
 --
 
@@ -953,6 +989,13 @@ ALTER TABLE ONLY public.refunds ALTER COLUMN id SET DEFAULT nextval('public.refu
 
 
 --
+-- Name: subreddits id; Type: DEFAULT; Schema: public; Owner: pod_admin
+--
+
+ALTER TABLE ONLY public.subreddits ALTER COLUMN id SET DEFAULT nextval('public.subreddits_id_seq'::regclass);
+
+
+--
 -- Name: users id; Type: DEFAULT; Schema: public; Owner: pod_admin
 --
 
@@ -988,14 +1031,6 @@ ALTER TABLE ONLY public.assets
 
 ALTER TABLE ONLY public.assets
     ADD CONSTRAINT assets_subreddit_key UNIQUE (subreddit);
-
-
---
--- Name: contracts contracts_pkey; Type: CONSTRAINT; Schema: public; Owner: pod_admin
---
-
-ALTER TABLE ONLY public.contracts
-    ADD CONSTRAINT contracts_pkey PRIMARY KEY (asset_id, chain_id);
 
 
 --
@@ -1071,6 +1106,14 @@ ALTER TABLE ONLY public.sessions
 
 
 --
+-- Name: subreddits subreddits_pkey; Type: CONSTRAINT; Schema: public; Owner: pod_admin
+--
+
+ALTER TABLE ONLY public.subreddits
+    ADD CONSTRAINT subreddits_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: pod_admin
 --
 
@@ -1123,14 +1166,6 @@ ALTER TABLE ONLY public.balances
 
 ALTER TABLE ONLY public.balances
     ADD CONSTRAINT balances_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
-
-
---
--- Name: contracts contracts_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pod_admin
---
-
-ALTER TABLE ONLY public.contracts
-    ADD CONSTRAINT contracts_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id);
 
 
 --
@@ -1187,6 +1222,14 @@ ALTER TABLE ONLY public.reddit_accounts
 
 ALTER TABLE ONLY public.sessions
     ADD CONSTRAINT sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: subreddit_balance_logs subreddit_balance_logs_subreddit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pod_admin
+--
+
+ALTER TABLE ONLY public.subreddit_balance_logs
+    ADD CONSTRAINT subreddit_balance_logs_subreddit_id_fkey FOREIGN KEY (subreddit_id) REFERENCES public.subreddits(id);
 
 
 --

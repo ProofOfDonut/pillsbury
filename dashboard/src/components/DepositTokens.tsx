@@ -12,8 +12,14 @@ import DepositTokensAdvanced from './DepositTokensAdvanced';
 
 const styles = (theme: Theme) => ({
   root: {
-    maxWidth: 450,
     marginTop: theme.spacing.unit * 2,
+    transition: 'max-width 400ms',
+  },
+  rootCollapsed: {
+    maxWidth: 450,
+  },
+  rootExpanded: {
+    maxWidth: 600,
   },
   metaMaskBalance: {
     fontSize: '90%',
@@ -30,6 +36,8 @@ const styles = (theme: Theme) => ({
 type PropTypes = {
   classes: {
     root: string;
+    rootCollapsed: string;
+    rootExpanded: string;
     metaMaskBalance: string;
     error: string;
   };
@@ -45,18 +53,19 @@ type State = {
   metaMaskBalance: number;
   metaMaskBalanceFormatted: string;
   moduleStatus: ReactNode;
+  expanded: boolean;
 };
 class DepositTokens extends PureComponent<PropTypes, State> {
   state = {
     metaMaskBalance: -1,
     metaMaskBalanceFormatted: '',
     moduleStatus: null,
+    expanded: false,
   };
 
   render() {
-    const classes = this.props.classes;
     return (
-      <Module className={classes.root}
+      <Module className={this.getClassName()}
               status={this.state.moduleStatus}>
         <Typography variant="h5">
           Deposit ERC-20 DONUTS
@@ -65,9 +74,19 @@ class DepositTokens extends PureComponent<PropTypes, State> {
         {this.renderAmountControls()}
         <DepositTokensAdvanced
             getDepositId={this.props.getDepositId}
-            getContractAddress={this.props.getContractAddress} />
+            getContractAddress={this.props.getContractAddress}
+            enabled={this.state.expanded}
+            enable={(expanded: boolean) => this.setState({expanded})} />
       </Module>
     );
+  }
+
+  private getClassName(): string {
+    const classes = this.props.classes;
+    if (this.state.expanded) {
+      return `${classes.root} ${classes.rootExpanded}`;
+    }
+    return `${classes.root} ${classes.rootCollapsed}`;
   }
 
   private renderAmountControls() {

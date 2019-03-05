@@ -83,7 +83,6 @@ export class EthereumClient {
   };
 
   async withdrawalsAllowed(): Promise<boolean> {
-    const blockNumber = await this.web3.eth.getBlockNumber();
-    return blockNumber < 7121500;
+    return true;
   }
 }
