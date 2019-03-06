@@ -8,6 +8,7 @@ import {routeAsset} from './endpoints/asset';
 import {routeAssetContract} from './endpoints/asset/contract';
 import {routeAssetWithdraw} from './endpoints/asset/withdraw';
 import {routeRedditConfig} from './endpoints/reddit/config';
+import {routeRedditHub} from './endpoints/reddit/hub';
 import {routeRedditLogin} from './endpoints/reddit/login';
 import {
   routeUserAvailableErc20Withdrawals,
@@ -56,6 +57,7 @@ async function main() {
       redditPuppetPort,
       apiConfig.getContractAddress);
   routeRedditConfig(apiServer);
+  routeRedditHub(apiServer);
   routeRedditLogin(apiServer, glazeDb);
   routeUserAvailableErc20Withdrawals(apiServer, glazeDb);
   routeUserBalances(apiServer, glazeDb);

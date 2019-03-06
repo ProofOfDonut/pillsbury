@@ -45,6 +45,8 @@ type State = {
   redditClientId: string;
   redditRedirectUri: string;
   getRedditLoginConfig: () => [string, string]|undefined;
+  redditHub: string;
+  getRedditHub: () => string;
 };
 type PropTypes = {};
 class AppData extends PureComponent<PropTypes, State> {
@@ -75,6 +77,8 @@ class AppData extends PureComponent<PropTypes, State> {
       redditClientId: '',
       redditRedirectUri: '',
       getRedditLoginConfig: () => this.getRedditLoginConfig(),
+      redditHub: '',
+      getRedditHub: () => this.getRedditHub(),
     };
     this.initialize();
   }
@@ -127,7 +131,8 @@ class AppData extends PureComponent<PropTypes, State> {
           defaultWithdrawalAddress={this.state.defaultWithdrawalAddress}
           getDepositId={() => this.asyncGetDepositId(ensure(this.state.user).id)}
           getContractAddress={this.tmpAsyncGetDonutContractAddress}
-          getRedditLoginConfig={this.state.getRedditLoginConfig} />
+          getRedditLoginConfig={this.state.getRedditLoginConfig}
+          getRedditHub={this.state.getRedditHub} />
     );
   }
 
@@ -407,13 +412,36 @@ class AppData extends PureComponent<PropTypes, State> {
     });
   }
 
-  private async asyncGetRedditLoginConfig() {
+  private async asyncGetRedditLoginConfig():
+      Promise<{redditClientId: string, redditRedirectUri: string}> {
     const response = await this.apiRequest(HttpMethod.GET, '/reddit/config');
     ensureObject(response);
     return {
       redditClientId: ensurePropString(response, 'client_id'),
       redditRedirectUri: ensurePropString(response, 'redirect_uri'),
     };
+  }
+
+  private getRedditHub = (): string => {
+    if (this.state.redditHub) {
+      return this.state.redditHub;
+    }
+    this.updateRedditHub();
+    return '';
+  };
+
+  private async updateRedditHub() {
+    const redditHub = await this.asyncGetRedditHub();
+    this.setState({
+      redditHub,
+      getRedditHub: () => this.getRedditHub(),
+    });
+  }
+
+  private async asyncGetRedditHub(): Promise<string> {
+    const response = await this.apiRequest(HttpMethod.GET, '/reddit/hub');
+    ensureObject(response);
+    return ensurePropString(response, 'username');
   }
 
   private async apiRequest(

@@ -1,3 +1,4 @@
+import CircularProgress from '@material-ui/core/CircularProgress';
 import React, {PureComponent} from 'react';
 import {AccountType} from '../common/types/Account';
 import {Asset, AssetSymbol} from '../common/types/Asset';
@@ -11,6 +12,7 @@ type PropTypes = {
   getMetaMaskBalance: (assetId: number) => Promise<number|null>;
   getDepositId: () => Promise<string>;
   getContractAddress: () => Promise<string>;
+  getRedditHub: () => string;
 };
 type State = {
   selectedTab: AccountType;
@@ -49,8 +51,13 @@ class DepositPage extends PureComponent<PropTypes, State> {
   }
 
   private renderRedditDepositInstructions() {
+    const redditHub = this.props.getRedditHub();
+    if (!redditHub) {
+      return <CircularProgress />
+    }
     return (
-      <RedditDepositInstructions />
+      <RedditDepositInstructions
+          redditHub={redditHub} />
     );
   }
 }

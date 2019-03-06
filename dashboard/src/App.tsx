@@ -61,6 +61,7 @@ type PropTypes = {
   getDepositId: () => Promise<string>;
   getContractAddress: () => Promise<string>;
   getRedditLoginConfig: () => [string, string]|undefined;
+  getRedditHub: () => string;
 };
 type State = {};
 class App extends PureComponent<PropTypes, State> {
@@ -184,7 +185,8 @@ class App extends PureComponent<PropTypes, State> {
           asyncGetAssetBySymbol={this.props.asyncGetAssetBySymbol}
           getMetaMaskBalance={this.props.getMetaMaskBalance}
           getDepositId={this.props.getDepositId}
-          getContractAddress={this.props.getContractAddress} />
+          getContractAddress={this.props.getContractAddress}
+          getRedditHub={this.props.getRedditHub} />
     );
   };
 

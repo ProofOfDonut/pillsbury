@@ -35,6 +35,7 @@ type Config = {
   baseUri: string;
   dashboardUrl: string;
   secureCookies: boolean;
+  redditHubUsername: string;
   redditClient: RedditClient;
   ethereumClient: EthereumClient;
   getContractAddress: GetContractAddress;
@@ -144,6 +145,7 @@ export class ApiServer {
       baseUri,
       dashboardUrl,
       secureCookies,
+      redditHubUsername,
       redditClient: new RedditClient(
           redditHubUsername, redditHubPassword, redditHubId, redditHubSecret),
       ethereumClient: createEthereumClient(
