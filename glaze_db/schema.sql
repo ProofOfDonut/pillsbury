@@ -516,6 +516,19 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 --
+-- Name: accepted_user_terms; Type: TABLE; Schema: public; Owner: pod_admin
+--
+
+CREATE TABLE public.accepted_user_terms (
+    user_id integer NOT NULL,
+    user_term_id integer NOT NULL,
+    creation_time timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.accepted_user_terms OWNER TO pod_admin;
+
+--
 -- Name: account_types; Type: TABLE; Schema: public; Owner: pod_admin
 --
 
@@ -867,6 +880,41 @@ ALTER SEQUENCE public.subreddits_id_seq OWNED BY public.subreddits.id;
 
 
 --
+-- Name: user_terms; Type: TABLE; Schema: public; Owner: pod_admin
+--
+
+CREATE TABLE public.user_terms (
+    id integer NOT NULL,
+    title text NOT NULL,
+    value text NOT NULL,
+    accept_label text NOT NULL
+);
+
+
+ALTER TABLE public.user_terms OWNER TO pod_admin;
+
+--
+-- Name: user_terms_id_seq; Type: SEQUENCE; Schema: public; Owner: pod_admin
+--
+
+CREATE SEQUENCE public.user_terms_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.user_terms_id_seq OWNER TO pod_admin;
+
+--
+-- Name: user_terms_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: pod_admin
+--
+
+ALTER SEQUENCE public.user_terms_id_seq OWNED BY public.user_terms.id;
+
+
+--
 -- Name: users; Type: TABLE; Schema: public; Owner: pod_admin
 --
 
@@ -997,6 +1045,13 @@ ALTER TABLE ONLY public.subreddits ALTER COLUMN id SET DEFAULT nextval('public.s
 
 
 --
+-- Name: user_terms id; Type: DEFAULT; Schema: public; Owner: pod_admin
+--
+
+ALTER TABLE ONLY public.user_terms ALTER COLUMN id SET DEFAULT nextval('public.user_terms_id_seq'::regclass);
+
+
+--
 -- Name: users id; Type: DEFAULT; Schema: public; Owner: pod_admin
 --
 
@@ -1115,6 +1170,14 @@ ALTER TABLE ONLY public.subreddits
 
 
 --
+-- Name: user_terms user_terms_pkey; Type: CONSTRAINT; Schema: public; Owner: pod_admin
+--
+
+ALTER TABLE ONLY public.user_terms
+    ADD CONSTRAINT user_terms_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: pod_admin
 --
 
@@ -1151,6 +1214,22 @@ ALTER TABLE ONLY public.withdrawals
 --
 
 CREATE TRIGGER update_balances_last_modified BEFORE UPDATE ON public.balances FOR EACH ROW EXECUTE PROCEDURE public.update_last_modified_column();
+
+
+--
+-- Name: accepted_user_terms accepted_user_terms_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pod_admin
+--
+
+ALTER TABLE ONLY public.accepted_user_terms
+    ADD CONSTRAINT accepted_user_terms_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: accepted_user_terms accepted_user_terms_user_term_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pod_admin
+--
+
+ALTER TABLE ONLY public.accepted_user_terms
+    ADD CONSTRAINT accepted_user_terms_user_term_id_fkey FOREIGN KEY (user_term_id) REFERENCES public.user_terms(id);
 
 
 --

@@ -18,6 +18,7 @@ import {
 import {Balances} from '../common/types/Balances';
 import {QueuedTransaction} from '../common/types/QueuedTransaction';
 import {User} from '../common/types/User';
+import {UserTerm} from '../common/types/UserTerm';
 // TODO: glaze_db shouldn't import from reddit_monitor
 import {DonutDelivery} from '../reddit_delivery_monitor';
 import {PostgresClient, Transaction} from '../lib/postgres';
@@ -487,6 +488,33 @@ export class GlazeDbClient {
                   AND (recipient).type = 'reddit_user'
                   AND success) AS sum;`);
     return ensureSafeInteger(+ensurePropString(row, 'sum'));
+  }
+
+  async getUnacceptedUserTerms(userId: number): Promise<UserTerm[]> {
+    const rows = await this.pgClient.query`
+      SELECT ut.id, ut.title, ut.value, ut.accept_label
+          FROM user_terms ut
+          WHERE NOT EXISTS (
+              SELECT 1
+                  FROM accepted_user_terms aut
+                  WHERE aut.user_id = ${userId}
+                      AND aut.user_term_id = ut.id
+                  LIMIT 1);`;
+    const terms: UserTerm[] = [];
+    for (const row of rows) {
+      const id = ensurePropSafeInteger(row, 'id');
+      const title = ensurePropString(row, 'title');
+      const text = ensurePropString(row, 'value');
+      const acceptLabel = ensurePropString(row, 'accept_label');
+      terms.push(new UserTerm(id, title, text, acceptLabel));
+    }
+    return terms;
+  }
+
+  async acceptUserTerm(userId: number, termId: number) {
+    await this.pgClient.query`
+      INSERT INTO accepted_user_terms (user_id, user_term_id)
+          VALUES (${userId}, ${termId});`;
   }
 
   private ensureOne(rows: any): Object {

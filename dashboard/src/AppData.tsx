@@ -3,16 +3,23 @@ import React, {PureComponent} from 'react';
 import Web3 from 'web3';
 import App from './App';
 import {
-  ensure, ensureObject, ensurePropNumber, ensurePropObject, ensurePropString,
+  ensure,
+  ensureObject,
+  ensurePropArrayOfType,
+  ensurePropObject,
+  ensurePropSafeInteger,
+  ensurePropString,
 } from './common/ensure';
 import {HttpMethod, httpMethodToString} from './common/net/http_method';
 import {Asset, AssetName, AssetSymbol} from './common/types/Asset';
 import {Balances} from './common/types/Balances';
 import {History} from './common/types/History';
 import {User} from './common/types/User';
+import {UserTerm} from './common/types/UserTerm';
 import {Withdrawal} from './common/types/Withdrawal';
 import {DEPOSITABLE_ABI} from './config';
 
+// TODO: What's a better way to make this configurable?
 const API_BASE =
     process.env.NODE_ENV == 'production'
         ? 'https://api.donut.dance'
@@ -47,6 +54,7 @@ type State = {
   getRedditLoginConfig: () => [string, string]|undefined;
   redditHub: string;
   getRedditHub: () => string;
+  unacceptedUserTerms: UserTerm[];
 };
 type PropTypes = {};
 class AppData extends PureComponent<PropTypes, State> {
@@ -79,6 +87,7 @@ class AppData extends PureComponent<PropTypes, State> {
       getRedditLoginConfig: () => this.getRedditLoginConfig(),
       redditHub: '',
       getRedditHub: () => this.getRedditHub(),
+      unacceptedUserTerms: [],
     };
     this.initialize();
   }
@@ -97,6 +106,7 @@ class AppData extends PureComponent<PropTypes, State> {
       this.setState({csrfToken}, resolve);
     });
     await this.updateUser();
+    const unacceptedUserTerms = await this.getUnacceptedUserTerms();
     let defaultWithdrawalAddress: string = '';
     try {
       defaultWithdrawalAddress = await this.getDefaultWeb3Address();
@@ -104,6 +114,7 @@ class AppData extends PureComponent<PropTypes, State> {
     this.setState({
       initialized: true,
       defaultWithdrawalAddress,
+      unacceptedUserTerms,
     });
   }
 
@@ -132,7 +143,9 @@ class AppData extends PureComponent<PropTypes, State> {
           getDepositId={() => this.asyncGetDepositId(ensure(this.state.user).id)}
           getContractAddress={this.tmpAsyncGetDonutContractAddress}
           getRedditLoginConfig={this.state.getRedditLoginConfig}
-          getRedditHub={this.state.getRedditHub} />
+          getRedditHub={this.state.getRedditHub}
+          unacceptedUserTerms={this.state.unacceptedUserTerms}
+          acceptUserTerm={this.acceptUserTerm} />
     );
   }
 
@@ -144,6 +157,7 @@ class AppData extends PureComponent<PropTypes, State> {
   private async updateUser() {
     const response = await this.apiRequest(HttpMethod.GET, '/user/identity');
     await new Promise(resolve => {
+      // The 'user' property may be null.
       ensure(typeof (response as any)['user'] == 'object');
       const info = (response as any)['user'] as Object|null;
       this.setState({
@@ -378,7 +392,7 @@ class AppData extends PureComponent<PropTypes, State> {
     const response = await this.apiRequest(
         HttpMethod.GET,
         `/user:${this.state.user.id}/available-erc20-withdrawals`);
-    return ensurePropNumber(response, 'available');
+    return ensurePropSafeInteger(response, 'available');
   }
 
   private withdraw = async (withdrawal: Withdrawal): Promise<any> => {
@@ -506,6 +520,25 @@ class AppData extends PureComponent<PropTypes, State> {
       this.setState({defaultWithdrawalAddress});
     } catch (e) {}
   }
+
+  private async getUnacceptedUserTerms(): Promise<UserTerm[]> {
+    const response = await this.apiRequest(HttpMethod.GET, '/user/terms');
+    const terms =
+        ensurePropArrayOfType(response, 'terms', 'object')
+          .map(UserTerm.fromJSON);
+    return terms;
+  }
+
+  private acceptUserTerm = async (termId: number) => {
+    await this.apiRequest(
+        HttpMethod.POST,
+        `/user/terms:${termId}`,
+        {'accept': true});
+    this.setState({
+      unacceptedUserTerms:
+          this.state.unacceptedUserTerms.filter(u => u.id != termId),
+    });
+  };
 }
 
 export default AppData;

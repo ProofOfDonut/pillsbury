@@ -11,6 +11,7 @@ import {Asset, AssetName, AssetSymbol} from './common/types/Asset';
 import {Balances} from './common/types/Balances';
 import {History} from './common/types/History';
 import {User} from './common/types/User';
+import {UserTerm} from './common/types/UserTerm';
 import {Withdrawal} from './common/types/Withdrawal';
 import BalancesPage from './pages/Balances';
 import DepositPage from './pages/Deposit';
@@ -20,6 +21,7 @@ import LoginPage from './pages/Login';
 import MaintenancePage from './pages/Maintenance';
 import SplashPage from './pages/Splash';
 import TransferPage from './pages/Transfer';
+import UserTermsPage from './pages/UserTerms';
 import WithdrawPage from './pages/Withdraw';
 import Notice from './Notice';
 
@@ -62,6 +64,8 @@ type PropTypes = {
   getContractAddress: () => Promise<string>;
   getRedditLoginConfig: () => [string, string]|undefined;
   getRedditHub: () => string;
+  unacceptedUserTerms: UserTerm[];
+  acceptUserTerm: (termId: number) => void;
 };
 type State = {};
 class App extends PureComponent<PropTypes, State> {
@@ -108,6 +112,14 @@ class App extends PureComponent<PropTypes, State> {
       } else {
         return <SplashPage />;
       }
+    }
+    if (this.props.unacceptedUserTerms.length > 0) {
+      const term = this.props.unacceptedUserTerms[0];
+      return <UserTermsPage
+          title={term.title}
+          text={term.text}
+          acceptLabel={term.acceptLabel}
+          accept={() => this.props.acceptUserTerm(term.id)} />;
     }
     return (
       <Chrome pathname={this.props.pathname}
