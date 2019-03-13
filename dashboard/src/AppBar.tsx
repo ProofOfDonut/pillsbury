@@ -9,7 +9,6 @@ import {Theme, withStyles} from '@material-ui/core/styles';
 import AccountCircle from '@material-ui/icons/AccountCircle';
 import MenuIcon from '@material-ui/icons/Menu';
 import React, {PureComponent} from 'react';
-import {SIDE_MENU_WIDTH} from './SideMenu';
 import {User} from './common/types/User';
 
 const styles = (theme: Theme) => ({

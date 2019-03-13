@@ -204,6 +204,18 @@ export function ensurePropDate(
   return ensureDate(actual, message);
 }
 
+export function ensurePropInEnum<T>(
+    obj: Object,
+    key: string,
+    values: any,
+    message: string = ''):
+    T {
+  return ensureInEnum<T>(
+      values,
+      ensureProp(obj, key, message),
+      message || undefined);
+}
+
 export function ensureSafeInteger(
     value: any,
     message: string = `Expected a safe integer (${value}).`):
@@ -221,8 +233,10 @@ export function ensureSafePositiveInteger(
   return value;
 }
 
-export function ensureInEnum<T>(values: any, value: any): T {
-  ensure(Object.values(values).includes(value),
-      `Expected value (${value}) to be included in enum.`);
+export function ensureInEnum<T>(
+    values: any,
+    value: any,
+    message: string = `Expected value (${value}) to be included in enum.`): T {
+  ensure(Object.values(values).includes(value), message);
   return <T> value;
 }

@@ -30,7 +30,7 @@ const styles = (theme: Theme) => ({
     padding: theme.spacing.unit * 2,
     background: '#fff',
     color: '#000',
-    zIndex: 1,
+    zIndex: 3,
     justifyContent: 'center',
   },
   maskContent: {

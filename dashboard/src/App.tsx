@@ -5,14 +5,15 @@ import Fade from '@material-ui/core/Fade';
 import {Theme, withStyles} from '@material-ui/core/styles';
 import React, {Fragment, PureComponent, ReactNode} from 'react';
 import Chrome from './Chrome';
-import backgroundImage from './background.jpg';
 import {ensure} from './common/ensure';
 import {Asset, AssetName, AssetSymbol} from './common/types/Asset';
 import {Balances} from './common/types/Balances';
 import {History} from './common/types/History';
 import {User} from './common/types/User';
+import {UserPermission} from './common/types/UserPermission';
 import {UserTerm} from './common/types/UserTerm';
 import {Withdrawal} from './common/types/Withdrawal';
+import AdminPage from './pages/Admin';
 import BalancesPage from './pages/Balances';
 import DepositPage from './pages/Deposit';
 import ErrorPage from './pages/Error';
@@ -32,8 +33,6 @@ const styles = {
     bottom: 0,
     left: 0,
     right: 0,
-    background: `url(${backgroundImage}) no-repeat center center fixed`,
-    backgroundSize: 'cover',
   },
 };
 
@@ -48,6 +47,7 @@ type PropTypes = {
   pathname: string;
   setPathname: (pathname: string) => void;
   user: User|null;
+  userPermissions: UserPermission[];
   logout: () => void;
   getAsset: (id: number) => Asset|undefined;
   getAssetBySymbol: (symbol: AssetSymbol) => Asset|undefined;
@@ -66,6 +66,8 @@ type PropTypes = {
   getRedditHub: () => string;
   unacceptedUserTerms: UserTerm[];
   acceptUserTerm: (termId: number) => void;
+  getAllUserTerms: () => UserTerm[];
+  setUserTerms: (userTerms: UserTerm[]) => Promise<void>;
 };
 type State = {};
 class App extends PureComponent<PropTypes, State> {
@@ -124,6 +126,7 @@ class App extends PureComponent<PropTypes, State> {
     return (
       <Chrome pathname={this.props.pathname}
               user={this.props.user}
+              userPermissions={this.props.userPermissions}
               logout={this.props.logout}>
         {this.renderPage()}
       </Chrome>
@@ -134,30 +137,34 @@ class App extends PureComponent<PropTypes, State> {
     return (
       <Fragment>
         <Route key="/"
-              exact
-              path="/"
-              title="Balances"
-              render={this.renderBalancesPage} />
+               exact
+               path="/"
+               title="Balances"
+               render={this.renderBalancesPage} />
         <Route key="/deposit"
-              exact
-              path="/deposit"
-              title="Deposit"
-              render={this.renderDepositPage} />
+               exact
+               path="/deposit"
+               title="Deposit"
+               render={this.renderDepositPage} />
         <Route key="/withdraw"
-              exact
-              path="/withdraw"
-              title="Withdraw"
-              render={this.renderWithdrawPage} />
+               exact
+               path="/withdraw"
+               title="Withdraw"
+               render={this.renderWithdrawPage} />
         <Route key="/transfer"
-              exact
-              path="/transfer"
-              title="Transfer"
-              component={TransferPage} />
+               exact
+               path="/transfer"
+               title="Transfer"
+               component={TransferPage} />
         <Route key="/history"
-              exact
-              path="/history"
-              title="History"
-              component={HistoryPage} />
+               exact
+               path="/history"
+               title="History"
+               component={HistoryPage} />
+        <Route key="/admin"
+               path="/admin"
+               title="Admin"
+               render={this.renderAdminPage} />
       </Fragment>
     );
   }
@@ -214,6 +221,15 @@ class App extends PureComponent<PropTypes, State> {
           defaultAddress={this.props.defaultWithdrawalAddress}
           balances={balances}
           refreshBalances={this.refreshPlatformBalances} />
+    );
+  };
+
+  private renderAdminPage = () => {
+    return (
+      <AdminPage
+          userPermissions={this.props.userPermissions}
+          getAllUserTerms={this.props.getAllUserTerms}
+          setUserTerms={this.props.setUserTerms} />
     );
   };
 

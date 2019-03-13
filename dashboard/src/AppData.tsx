@@ -4,7 +4,9 @@ import Web3 from 'web3';
 import App from './App';
 import {
   ensure,
+  ensureInEnum,
   ensureObject,
+  ensurePropArray,
   ensurePropArrayOfType,
   ensurePropObject,
   ensurePropSafeInteger,
@@ -15,6 +17,7 @@ import {Asset, AssetName, AssetSymbol} from './common/types/Asset';
 import {Balances} from './common/types/Balances';
 import {History} from './common/types/History';
 import {User} from './common/types/User';
+import {UserPermission} from './common/types/UserPermission';
 import {UserTerm} from './common/types/UserTerm';
 import {Withdrawal} from './common/types/Withdrawal';
 import {DEPOSITABLE_ABI} from './config';
@@ -38,6 +41,7 @@ type State = {
   csrfToken: string;
   pathname: string;
   user: User|null;
+  userPermissions: UserPermission[];
   assets: Map<number, Asset>;
   getAsset: (id: number) => Asset|undefined;
   assetsBySymbol: Map<AssetSymbol, number>;
@@ -55,6 +59,8 @@ type State = {
   redditHub: string;
   getRedditHub: () => string;
   unacceptedUserTerms: UserTerm[];
+  allUserTerms: UserTerm[]|null;
+  getAllUserTerms: () => UserTerm[];
 };
 type PropTypes = {};
 class AppData extends PureComponent<PropTypes, State> {
@@ -71,6 +77,7 @@ class AppData extends PureComponent<PropTypes, State> {
       csrfToken: '',
       pathname: location.pathname,
       user: null,
+      userPermissions: [],
       assets: Map<number, Asset>(),
       getAsset: (id: number) => this.getAsset(id),
       assetsBySymbol: Map<AssetSymbol, number>(),
@@ -88,6 +95,8 @@ class AppData extends PureComponent<PropTypes, State> {
       redditHub: '',
       getRedditHub: () => this.getRedditHub(),
       unacceptedUserTerms: [],
+      allUserTerms: null,
+      getAllUserTerms: () => this.getAllUserTerms(),
     };
     this.initialize();
   }
@@ -106,7 +115,6 @@ class AppData extends PureComponent<PropTypes, State> {
       this.setState({csrfToken}, resolve);
     });
     await this.updateUser();
-    const unacceptedUserTerms = await this.getUnacceptedUserTerms();
     let defaultWithdrawalAddress: string = '';
     try {
       defaultWithdrawalAddress = await this.getDefaultWeb3Address();
@@ -114,7 +122,6 @@ class AppData extends PureComponent<PropTypes, State> {
     this.setState({
       initialized: true,
       defaultWithdrawalAddress,
-      unacceptedUserTerms,
     });
   }
 
@@ -128,6 +135,7 @@ class AppData extends PureComponent<PropTypes, State> {
           pathname={this.state.pathname}
           setPathname={this.setPathname}
           user={this.state.user}
+          userPermissions={this.state.userPermissions}
           logout={this.logout}
           getAsset={this.state.getAsset}
           getAssetBySymbol={this.state.getAssetBySymbol}
@@ -145,7 +153,9 @@ class AppData extends PureComponent<PropTypes, State> {
           getRedditLoginConfig={this.state.getRedditLoginConfig}
           getRedditHub={this.state.getRedditHub}
           unacceptedUserTerms={this.state.unacceptedUserTerms}
-          acceptUserTerm={this.acceptUserTerm} />
+          acceptUserTerm={this.acceptUserTerm}
+          getAllUserTerms={this.state.getAllUserTerms}
+          setUserTerms={this.setUserTerms} />
     );
   }
 
@@ -156,12 +166,20 @@ class AppData extends PureComponent<PropTypes, State> {
 
   private async updateUser() {
     const response = await this.apiRequest(HttpMethod.GET, '/user/identity');
-    await new Promise(resolve => {
+    await new Promise(async (resolve) => {
       // The 'user' property may be null.
       ensure(typeof (response as any)['user'] == 'object');
       const info = (response as any)['user'] as Object|null;
+      const user = info ? User.fromJSON(info) : null;
+      const userPermissions =
+          ensurePropArray(response, 'permissions')
+            .map(u => ensureInEnum<UserPermission>(UserPermission, u));
+      let unacceptedUserTerms: UserTerm[] = [];
+      if (user) {
+        unacceptedUserTerms = await this.getUnacceptedUserTerms();
+      }
       this.setState({
-        user: info ? User.fromJSON(info) : null,
+        user, userPermissions, unacceptedUserTerms,
       }, resolve);
     });
   }
@@ -522,7 +540,9 @@ class AppData extends PureComponent<PropTypes, State> {
   }
 
   private async getUnacceptedUserTerms(): Promise<UserTerm[]> {
-    const response = await this.apiRequest(HttpMethod.GET, '/user/terms');
+    const response = await this.apiRequest(
+        HttpMethod.GET,
+        '/user/terms:unaccepted');
     const terms =
         ensurePropArrayOfType(response, 'terms', 'object')
           .map(UserTerm.fromJSON);
@@ -537,6 +557,57 @@ class AppData extends PureComponent<PropTypes, State> {
     this.setState({
       unacceptedUserTerms:
           this.state.unacceptedUserTerms.filter(u => u.id != termId),
+    });
+  };
+
+  private getAllUserTerms(): UserTerm[] {
+    const terms = this.state.allUserTerms;
+    if (!terms) {
+      this.updateAllUserTerms();
+      return [];
+    }
+    return terms;
+  }
+
+  private async updateAllUserTerms() {
+    const terms = await this.asyncGetAllUserTerms();
+    this.setState({
+      allUserTerms: terms,
+      getAllUserTerms: () => this.getAllUserTerms(),
+    });
+  }
+
+  private async asyncGetAllUserTerms():
+      Promise<UserTerm[]> {
+    const response = await this.apiRequest(
+        HttpMethod.GET,
+        '/user/terms:all');
+    const terms =
+        ensurePropArrayOfType(response, 'terms', 'object')
+          .map(UserTerm.fromJSON);
+    return terms;
+  }
+
+  private setUserTerms = async (terms: UserTerm[]) => {
+    const response = await this.apiRequest(
+        HttpMethod.PUT,
+        `/user/terms:all`,
+        {'terms': terms});
+    const newTermIds: number[] =
+        ensurePropArrayOfType(response, 'new_term_ids', 'number');
+    let i = 0;
+    this.setState({
+      allUserTerms: terms.map(u => {
+        if (u.id == 0) {
+          return new UserTerm(
+              newTermIds[i++],
+              u.title,
+              u.text,
+              u.acceptLabel);
+        }
+        return u;
+      }),
+      getAllUserTerms: () => this.getAllUserTerms(),
     });
   };
 }

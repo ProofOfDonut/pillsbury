@@ -1,9 +1,11 @@
 import {Map} from 'immutable';
 import {
+  ensure,
   ensureArray,
   ensureEqual,
   ensureObject,
   ensurePropDate,
+  ensurePropInEnum,
   ensurePropNumber,
   ensurePropObject,
   ensurePropSafeInteger,
@@ -18,6 +20,9 @@ import {
 import {Balances} from '../common/types/Balances';
 import {QueuedTransaction} from '../common/types/QueuedTransaction';
 import {User} from '../common/types/User';
+import {
+  ALL_USER_PERMISSION_VALUES, UserPermission,
+} from '../common/types/UserPermission';
 import {UserTerm} from '../common/types/UserTerm';
 // TODO: glaze_db shouldn't import from reddit_monitor
 import {DonutDelivery} from '../reddit_delivery_monitor';
@@ -190,10 +195,41 @@ export class GlazeDbClient {
       SELECT u.public_id, ra.username
           FROM users u
           INNER JOIN reddit_accounts ra ON ra.user_id = u.id
-          WHERE u.id = ${id} LIMIT 1;`);
+          WHERE u.id = ${id}
+          LIMIT 1;`);
     const publicId = ensurePropString(row, 'public_id');
     const username = ensurePropString(row, 'username');
     return new User(publicId, username);
+  }
+
+  async getUsername(id: number): Promise<string> {
+    const row = this.ensureOne(await this.pgClient.query`
+        SELECT username FROM reddit_accounts WHERE user_id = ${id} LIMIT 1;`);
+    return ensurePropString(row, 'username');
+  }
+
+  async getUserPermissions(
+      isRootAdmin: (username: string) => boolean,
+      id: number):
+      Promise<UserPermission[]> {
+    const [username, rows] = await Promise.all([
+      this.getUsername(id),
+      this.pgClient.query`
+        SELECT rp.permission
+            FROM role_permissions rp
+            INNER JOIN user_roles ur
+                ON ur.role = rp.role
+            WHERE ur.user_id = ${id};`,
+    ]);
+    if (isRootAdmin(username)) {
+      return ALL_USER_PERMISSION_VALUES;
+    }
+    const permissions: UserPermission[] = [];
+    for (const row of rows) {
+      permissions.push(
+          ensurePropInEnum<UserPermission>(row, 'permission', UserPermission));
+    }
+    return permissions;
   }
 
   async logout(token: string): Promise<void> {
@@ -491,15 +527,96 @@ export class GlazeDbClient {
   }
 
   async getUnacceptedUserTerms(userId: number): Promise<UserTerm[]> {
-    const rows = await this.pgClient.query`
+    return this.rowsToUserTerms(await this.pgClient.query`
       SELECT ut.id, ut.title, ut.value, ut.accept_label
           FROM user_terms ut
-          WHERE NOT EXISTS (
-              SELECT 1
-                  FROM accepted_user_terms aut
-                  WHERE aut.user_id = ${userId}
-                      AND aut.user_term_id = ut.id
-                  LIMIT 1);`;
+          WHERE NOT deleted
+              AND NOT EXISTS (
+                  SELECT 1
+                      FROM accepted_user_terms aut
+                      WHERE aut.user_id = ${userId}
+                          AND aut.user_term_id = ut.id
+                      LIMIT 1);`);
+  }
+
+  async acceptUserTerm(userId: number, termId: number) {
+    await this.pgClient.query`
+      INSERT INTO accepted_user_terms (user_id, user_term_id)
+          VALUES (${userId}, ${termId});`;
+  }
+
+  async getAllUserTerms(
+      isRootAdmin: (username: string) => boolean,
+      userId: number):
+      Promise<UserTerm[]> {
+    const [_, rows] = await Promise.all([
+      this.requireUserPermission(
+          isRootAdmin,
+          userId,
+          UserPermission.EDIT_USER_TERMS),
+      this.pgClient.query`
+        SELECT id, title, value, accept_label
+            FROM user_terms
+            WHERE NOT deleted;`,
+    ]);
+    return this.rowsToUserTerms(rows);
+  }
+
+  async updateUserTerms(
+      isRootAdmin: (username: string) => boolean,
+      userId: number,
+      terms: UserTerm[]):
+      Promise<number[]> {
+    await this.requireUserPermission(
+        isRootAdmin,
+        userId,
+        UserPermission.EDIT_USER_TERMS);
+    const termIds = new Set<number>();
+    const newTermIds: number[] = [];
+    for (const term of terms) {
+      if (term.id == 0) {
+        const row = this.ensureOne(await this.pgClient.query`
+          INSERT INTO user_terms (title, value, accept_label)
+              VALUES (${term.title}, ${term.text}, ${term.acceptLabel})
+              RETURNING id;`);
+        const id = ensurePropSafeInteger(row, 'id');
+        ensure(!termIds.has(id));
+        termIds.add(id);
+        newTermIds.push(id);
+      } else {
+        ensure(!termIds.has(term.id));
+        termIds.add(term.id);
+        await this.pgClient.query`
+          UPDATE user_terms
+              SET title=${term.title},
+                  value = ${term.text},
+                  accept_label=${term.acceptLabel}
+              WHERE id = ${term.id};`;
+      }
+    }
+    await this.pgClient.query`
+      UPDATE user_terms SET deleted = TRUE WHERE id != ALL(${[...termIds]});`;
+    return newTermIds;
+  }
+
+  private async requireUserPermission(
+      isRootAdmin: (username: string) => boolean,
+      userId: number,
+      permission: UserPermission) {
+    ensure(this.hasUserPermission(isRootAdmin, userId, permission),
+        'Insufficient permissions');
+  }
+
+  private async hasUserPermission(
+      isRootAdmin: (username: string) => boolean,
+      userId: number,
+      permission: UserPermission):
+      Promise<boolean> {
+    const permissions = await this.getUserPermissions(isRootAdmin, userId);
+    return permissions.includes(permission);
+  }
+
+  private rowsToUserTerms(rows: Object[]): UserTerm[] {
     const terms: UserTerm[] = [];
     for (const row of rows) {
       const id = ensurePropSafeInteger(row, 'id');
@@ -509,12 +626,6 @@ export class GlazeDbClient {
       terms.push(new UserTerm(id, title, text, acceptLabel));
     }
     return terms;
-  }
-
-  async acceptUserTerm(userId: number, termId: number) {
-    await this.pgClient.query`
-      INSERT INTO accepted_user_terms (user_id, user_term_id)
-          VALUES (${userId}, ${termId});`;
   }
 
   private ensureOne(rows: any): Object {

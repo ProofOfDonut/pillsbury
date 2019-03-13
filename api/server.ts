@@ -35,6 +35,7 @@ type Config = {
   baseUri: string;
   dashboardUrl: string;
   secureCookies: boolean;
+  isRootAdmin: (username: string) => boolean;
   redditHubUsername: string;
   redditClient: RedditClient;
   ethereumClient: EthereumClient;
@@ -129,6 +130,8 @@ export class ApiServer {
     const trustProxy = ensurePropSafeInteger(config, 'trust-proxy');
     const dashboardUrl = ensurePropString(config, 'dashboard-url');
     const secureCookies = ensurePropBoolean(config, 'secure-cookies');
+    const rootAdmins =
+        <string[]> ensurePropArrayOfType(config, 'root-admins', 'string');
     const redditLoginId = ensurePropString(redditLoginConfig, 'id');
     const redditLoginSecret = ensurePropString(redditLoginConfig, 'secret');
     const ethereumNodeHost = ensurePropString(ethereumNodeConfig, 'host');
@@ -139,12 +142,15 @@ export class ApiServer {
     // The request filter is type checked elsewhere.
     const requestFilter = config['request-filter'];
 
+    const lowercaseRootAdmins = rootAdmins.map(u => u.toLowerCase());
     configResolve({
       clientId: redditLoginId,
       secret: redditLoginSecret,
       baseUri,
       dashboardUrl,
       secureCookies,
+      isRootAdmin: (username: string) =>
+          lowercaseRootAdmins.includes(username.toLowerCase()),
       redditHubUsername,
       redditClient: new RedditClient(
           redditHubUsername, redditHubPassword, redditHubId, redditHubSecret),
@@ -226,8 +232,12 @@ export class ApiServer {
           => Promise<void>,
       doCsrfTokenCheck: boolean = true) {
     const app = await this.app;
-    let onMethod = method == HttpMethod.GET ? app.get : app.post;
-    onMethod.call(
+    let onMethod =
+        method == HttpMethod.GET ? app.get
+        : method == HttpMethod.POST ? app.post
+        : method == HttpMethod.PUT ? app.put
+        : null;
+    ensure(onMethod, `Unknown or unavailale method (${method})`).call(
         app,
         route,
         async (req: Request, res: Response) => {

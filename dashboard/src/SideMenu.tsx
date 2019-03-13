@@ -11,8 +11,10 @@ import AccountBalanceWalletIcon from '@material-ui/icons/AccountBalanceWallet';
 import HistoryIcon from '@material-ui/icons/History';
 import CloudUploadIcon from '@material-ui/icons/CloudUpload';
 import MoveToInboxIcon from '@material-ui/icons/MoveToInbox';
+import SettingsIcon from '@material-ui/icons/Settings';
 import SwapHorizIcon from '@material-ui/icons/SwapHoriz';
-import React, {PureComponent} from 'react';
+import React, {Fragment, PureComponent} from 'react';
+import {UserPermission} from './common/types/UserPermission';
 import {RouteListItem} from './RouteListItem';
 
 export const SIDE_MENU_WIDTH = 240;
@@ -39,6 +41,7 @@ type PropTypes = {
   theme: Theme;
   mobileOpen: boolean;
   mobileClose: () => void;
+  userPermissions: UserPermission[];
 };
 type State = {};
 
@@ -46,42 +49,41 @@ class ResponsiveDrawer extends PureComponent<PropTypes, State> {
   render() {
     const { classes, theme } = this.props;
 
-    // const drawer = (
-    //   <div>
-    //     <div className={classes.toolbar} />
-    //     <Divider />
-    //     <List>
-    //       <RouteListItem to="/">
-    //         <ListItemIcon><AccountBalanceWalletIcon /></ListItemIcon>
-    //         <ListItemText primary="Balances" />
-    //       </RouteListItem>
-    //     </List>
-    //     <Divider />
-    //     <List>
-    //       <RouteListItem to="/deposit">
-    //         <ListItemIcon><MoveToInboxIcon /></ListItemIcon>
-    //         <ListItemText primary="Deposit" />
-    //       </RouteListItem>
-    //       <RouteListItem to="/withdraw">
-    //         <ListItemIcon><CloudUploadIcon /></ListItemIcon>
-    //         <ListItemText primary="Withdraw" />
-    //       </RouteListItem>
-    //       <RouteListItem to="/transfer">
-    //         <ListItemIcon><SwapHorizIcon /></ListItemIcon>
-    //         <ListItemText primary="Transfer" />
-    //       </RouteListItem>
-    //     </List>
-    //     <Divider />
-    //     <List>
-    //       <RouteListItem to="/history">
-    //         <ListItemIcon><HistoryIcon /></ListItemIcon>
-    //         <ListItemText primary="History" />
-    //       </RouteListItem>
-    //     </List>
-    //   </div>
-    // );
+    return (
+      <nav className={classes.drawer}>
+        <Hidden smUp implementation="css">
+          <Drawer
+              variant="temporary"
+              anchor={theme.direction === 'rtl' ? 'right' : 'left'}
+              open={this.props.mobileOpen}
+              onClose={this.props.mobileClose}
+              classes={{
+                paper: classes.drawerPaper,
+              }}
+              ModalProps={{
+                keepMounted: true, // Better open performance on mobile.
+              }}>
+            {this.renderDrawer()}
+          </Drawer>
+        </Hidden>
+        <Hidden xsDown implementation="css">
+          <Drawer
+              classes={{
+                paper: classes.drawerPaper,
+              }}
+              variant="permanent"
+              open>
+            {this.renderDrawer()}
+          </Drawer>
+        </Hidden>
+      </nav>
+    );
+  }
 
-    const drawer = (
+  private renderDrawer() {
+    const classes = this.props.classes;
+
+    return (
       <div>
         <div className={classes.toolbar} />
         <Divider />
@@ -102,38 +104,25 @@ class ResponsiveDrawer extends PureComponent<PropTypes, State> {
             <ListItemText primary="Withdraw" />
           </RouteListItem>
         </List>
+        {this.renderAdminItem()}
       </div>
     );
+  }
 
-    return (
-      <nav className={classes.drawer}>
-        <Hidden smUp implementation="css">
-          <Drawer
-              variant="temporary"
-              anchor={theme.direction === 'rtl' ? 'right' : 'left'}
-              open={this.props.mobileOpen}
-              onClose={this.props.mobileClose}
-              classes={{
-                paper: classes.drawerPaper,
-              }}
-              ModalProps={{
-                keepMounted: true, // Better open performance on mobile.
-              }}>
-            {drawer}
-          </Drawer>
-        </Hidden>
-        <Hidden xsDown implementation="css">
-          <Drawer
-              classes={{
-                paper: classes.drawerPaper,
-              }}
-              variant="permanent"
-              open>
-            {drawer}
-          </Drawer>
-        </Hidden>
-      </nav>
-    );
+  private renderAdminItem() {
+    if (this.props.userPermissions.includes(UserPermission.EDIT_USER_TERMS)) {
+      return (
+        <Fragment>
+          <Divider />
+          <List>
+            <RouteListItem to="/admin">
+              <ListItemIcon><SettingsIcon /></ListItemIcon>
+              <ListItemText primary="Admin" />
+            </RouteListItem>
+          </List>
+        </Fragment>
+      );
+    }
   }
 }
 

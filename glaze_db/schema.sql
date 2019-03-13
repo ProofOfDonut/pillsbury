@@ -817,6 +817,18 @@ ALTER SEQUENCE public.refunds_id_seq OWNED BY public.refunds.id;
 
 
 --
+-- Name: role_permissions; Type: TABLE; Schema: public; Owner: pod_admin
+--
+
+CREATE TABLE public.role_permissions (
+    role text NOT NULL,
+    permission text NOT NULL
+);
+
+
+ALTER TABLE public.role_permissions OWNER TO pod_admin;
+
+--
 -- Name: sessions; Type: TABLE; Schema: public; Owner: pod_admin
 --
 
@@ -880,6 +892,18 @@ ALTER SEQUENCE public.subreddits_id_seq OWNED BY public.subreddits.id;
 
 
 --
+-- Name: user_roles; Type: TABLE; Schema: public; Owner: pod_admin
+--
+
+CREATE TABLE public.user_roles (
+    user_id integer NOT NULL,
+    role text NOT NULL
+);
+
+
+ALTER TABLE public.user_roles OWNER TO pod_admin;
+
+--
 -- Name: user_terms; Type: TABLE; Schema: public; Owner: pod_admin
 --
 
@@ -887,7 +911,8 @@ CREATE TABLE public.user_terms (
     id integer NOT NULL,
     title text NOT NULL,
     value text NOT NULL,
-    accept_label text NOT NULL
+    accept_label text NOT NULL,
+    deleted boolean DEFAULT false NOT NULL
 );
 
 
@@ -1154,6 +1179,14 @@ ALTER TABLE ONLY public.reddit_accounts
 
 
 --
+-- Name: role_permissions role_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: pod_admin
+--
+
+ALTER TABLE ONLY public.role_permissions
+    ADD CONSTRAINT role_permissions_pkey PRIMARY KEY (role, permission);
+
+
+--
 -- Name: sessions sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: pod_admin
 --
 
@@ -1167,6 +1200,14 @@ ALTER TABLE ONLY public.sessions
 
 ALTER TABLE ONLY public.subreddits
     ADD CONSTRAINT subreddits_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_roles user_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: pod_admin
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_pkey PRIMARY KEY (user_id, role);
 
 
 --
@@ -1310,6 +1351,14 @@ ALTER TABLE ONLY public.sessions
 
 ALTER TABLE ONLY public.subreddit_balance_logs
     ADD CONSTRAINT subreddit_balance_logs_subreddit_id_fkey FOREIGN KEY (subreddit_id) REFERENCES public.subreddits(id);
+
+
+--
+-- Name: user_roles user_roles_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pod_admin
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --

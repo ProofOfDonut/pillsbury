@@ -3,6 +3,7 @@ import React, {PureComponent, ReactNode} from 'react';
 import AppBar from './AppBar';
 import SideMenu from './SideMenu';
 import {User} from './common/types/User';
+import {UserPermission} from './common/types/UserPermission';
 
 const styles = (theme: Theme) => ({
   container: {
@@ -22,6 +23,7 @@ type PropTypes = {
   };
   pathname: string;
   user: User;
+  userPermissions: UserPermission[];
   logout: () => void;
   children: ReactNode;
 };
@@ -41,7 +43,8 @@ class Chrome extends PureComponent<PropTypes, State> {
                 logout={this.props.logout}
                 toggleMobileMenu={this.toggleMobileMenu} />
         <SideMenu mobileOpen={this.state.mobileOpen}
-                  mobileClose={this.mobileClose} />
+                  mobileClose={this.mobileClose}
+                  userPermissions={this.props.userPermissions} />
         <div className={classes.content}>
           <div className={classes.toolbar} />
           {this.props.children}
