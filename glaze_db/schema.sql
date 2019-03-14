@@ -70,6 +70,18 @@ CREATE TYPE public.account AS (
 ALTER TYPE public.account OWNER TO pod_admin;
 
 --
+-- Name: event_type; Type: TYPE; Schema: public; Owner: pod_admin
+--
+
+CREATE TYPE public.event_type AS ENUM (
+    'api_endpoint',
+    'api_endpoint_error'
+);
+
+
+ALTER TYPE public.event_type OWNER TO pod_admin;
+
+--
 -- Name: add_inbound_delivery(text, text, text, integer, timestamp with time zone); Type: FUNCTION; Schema: public; Owner: pod_admin
 --
 
@@ -712,6 +724,41 @@ ALTER SEQUENCE public.erc20_deposits_id_seq OWNED BY public.erc20_deposits.id;
 
 
 --
+-- Name: event_logs; Type: TABLE; Schema: public; Owner: pod_admin
+--
+
+CREATE TABLE public.event_logs (
+    id integer NOT NULL,
+    type public.event_type NOT NULL,
+    data text NOT NULL,
+    creation_time timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.event_logs OWNER TO pod_admin;
+
+--
+-- Name: event_logs_id_seq; Type: SEQUENCE; Schema: public; Owner: pod_admin
+--
+
+CREATE SEQUENCE public.event_logs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.event_logs_id_seq OWNER TO pod_admin;
+
+--
+-- Name: event_logs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: pod_admin
+--
+
+ALTER SEQUENCE public.event_logs_id_seq OWNED BY public.event_logs.id;
+
+
+--
 -- Name: nonces; Type: TABLE; Schema: public; Owner: pod_admin
 --
 
@@ -1049,6 +1096,13 @@ ALTER TABLE ONLY public.erc20_deposits ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
+-- Name: event_logs id; Type: DEFAULT; Schema: public; Owner: pod_admin
+--
+
+ALTER TABLE ONLY public.event_logs ALTER COLUMN id SET DEFAULT nextval('public.event_logs_id_seq'::regclass);
+
+
+--
 -- Name: queued_transactions id; Type: DEFAULT; Schema: public; Owner: pod_admin
 --
 
@@ -1152,6 +1206,14 @@ ALTER TABLE ONLY public.deliveries
 
 ALTER TABLE ONLY public.erc20_deposits
     ADD CONSTRAINT erc20_deposits_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: event_logs event_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: pod_admin
+--
+
+ALTER TABLE ONLY public.event_logs
+    ADD CONSTRAINT event_logs_pkey PRIMARY KEY (id);
 
 
 --

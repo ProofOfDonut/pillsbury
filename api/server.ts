@@ -18,6 +18,7 @@ import {
 } from '../common/ensure';
 import {readFile} from '../common/io/files/read';
 import {HttpMethod} from '../common/net/http_method';
+import {EventLogType} from '../common/types/EventLogType';
 import {EthereumClient, createEthereumClient} from '../lib/ethereum';
 import {RedditClient} from '../lib/reddit';
 import {GlazeDbClient} from '../glaze_db';
@@ -240,8 +241,9 @@ export class ApiServer {
     ensure(onMethod, `Unknown or unavailale method (${method})`).call(
         app,
         route,
-        async (req: Request, res: Response) => {
+        async (req: Request, res: Response) => {  
       try {
+        await this.logApiEndpointEvent(req, route);
         if (doCsrfTokenCheck) {
           await checkCsrfToken(req, this.glazeDb);
         }
@@ -252,12 +254,41 @@ export class ApiServer {
           .set('Content-Type', 'application/json; charset=utf-8')
           .end(JSON.stringify({
             'success': false,
-            'message': e.message,
-            'stack': e.stack,
+            'message': e && e.message,
+            'stack': e && e.stack,
           }));
+        this.logApiEndpointErrorEvent(req, route, e);
       }
     });
-  }
+    }
+
+    async logApiEndpointEvent(
+        req: Request,
+        route: string) {
+      const data = JSON.stringify({
+        'route': route,
+        'params': JSON.stringify(req.params),
+        'body': JSON.stringify(req.body),
+      });
+      await this.glazeDb.logEvent(EventLogType.API_ENDPOINT, data);
+    }
+
+    async logApiEndpointErrorEvent(
+        req: Request,
+        route: string,
+        error: any) {
+      const errorMessage =
+          error && error.stack
+          || error && error.message
+          || String(error);
+      const data = JSON.stringify({
+        'route': route,
+        'params': JSON.stringify(req.params),
+        'body': JSON.stringify(req.body),
+        'error': errorMessage,
+      });
+      await this.glazeDb.logEvent(EventLogType.API_ENDPOINT_ERROR, data);
+    }
 }
 
 function originsToRegExp(origins: string[]): RegExp {

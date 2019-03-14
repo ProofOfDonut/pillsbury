@@ -18,6 +18,7 @@ import {
   Asset, AssetName, AssetSymbol, assetSymbolFromString,
 } from '../common/types/Asset';
 import {Balances} from '../common/types/Balances';
+import {EventLogType} from '../common/types/EventLogType';
 import {QueuedTransaction} from '../common/types/QueuedTransaction';
 import {User} from '../common/types/User';
 import {
@@ -626,6 +627,12 @@ export class GlazeDbClient {
       terms.push(new UserTerm(id, title, text, acceptLabel));
     }
     return terms;
+  }
+
+  async logEvent(type: EventLogType, data: string) {
+    await this.pgClient.query`
+      INSERT INTO event_logs (type, data)
+          VALUES (${type}, ${data});`;
   }
 
   private ensureOne(rows: any): Object {
