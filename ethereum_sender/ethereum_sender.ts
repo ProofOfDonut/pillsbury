@@ -1,9 +1,11 @@
 import {
   ensureEqual, ensureObject, ensurePropArray, ensurePropString,
 } from '../common/ensure';
+import {errorToString} from '../common/errors';
 import {readFile} from '../common/io/files/read';
 import {AccountType} from '../common/types/Account';
 import {AssetSymbol} from '../common/types/Asset';
+import {EventLogType} from '../common/types/EventLogType';
 import {QueuedTransaction} from '../common/types/QueuedTransaction';
 import {
   EthereumClient, PendingTransaction, createEthereumClient,
@@ -53,10 +55,26 @@ export class EthereumSender {
   }
 
   private async processTransaction(tx: QueuedTransaction, queuedTxId: number) {
-    const pendingTx = await this.ethereumClient.sendTransaction(tx);
+    const pendingTx = await this.sendTransaction(tx);
     await this.glazeDb.setQueuedTransactionHash(queuedTxId, pendingTx.hash);
     await this.transactionSent(pendingTx);
     await this.glazeDb.dequeueTransaction(queuedTxId);
+  }
+
+  private async sendTransaction(tx: QueuedTransaction) {
+    await this.glazeDb.logEvent(
+        EventLogType.ETHEREUM_SEND_TRANSACTION,
+        JSON.stringify(tx));
+    let pendingTx: PendingTransaction; 
+    try {
+      pendingTx = await this.ethereumClient.sendTransaction(tx);
+    } catch (e) {
+      await this.glazeDb.logEvent(
+          EventLogType.ETHEREUM_SEND_TRANSACTION_ERROR,
+          JSON.stringify({'error': errorToString(e)}));
+      throw e;
+    }
+    return pendingTx;
   }
 
   private async transactionSent(pendingTx: PendingTransaction) {

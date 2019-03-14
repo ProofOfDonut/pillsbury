@@ -58,7 +58,10 @@ def get_patches():
     seen_patch_hashes = set()
     file_re = re.compile(r'(?:(\d+)(\.sql|\.py|\.sh))$')
     dir_re = re.compile(r'^\d+$')
+    ignore_re = re.compile(r'(\.swp|~)$')
     for file in os.listdir(get_patch_dir()):
+        if ignore_re.search(file):
+            continue
         # Directories named after patch numbers may be used to supply assets for
         # a patch, but they are ignored by db manager.
         if dir_re.match(file):

@@ -16,6 +16,7 @@ import {
   ensurePropString,
   ensureSafeInteger,
 } from '../common/ensure';
+import {errorToString} from '../common/errors';
 import {readFile} from '../common/io/files/read';
 import {HttpMethod} from '../common/net/http_method';
 import {EventLogType} from '../common/types/EventLogType';
@@ -266,6 +267,7 @@ export class ApiServer {
         req: Request,
         route: string) {
       const data = JSON.stringify({
+        'method': req.method,
         'route': route,
         'params': JSON.stringify(req.params),
         'body': JSON.stringify(req.body),
@@ -277,15 +279,11 @@ export class ApiServer {
         req: Request,
         route: string,
         error: any) {
-      const errorMessage =
-          error && error.stack
-          || error && error.message
-          || String(error);
       const data = JSON.stringify({
         'route': route,
         'params': JSON.stringify(req.params),
         'body': JSON.stringify(req.body),
-        'error': errorMessage,
+        'error': errorToString(error),
       });
       await this.glazeDb.logEvent(EventLogType.API_ENDPOINT_ERROR, data);
     }

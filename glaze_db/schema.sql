@@ -75,7 +75,9 @@ ALTER TYPE public.account OWNER TO pod_admin;
 
 CREATE TYPE public.event_type AS ENUM (
     'api_endpoint',
-    'api_endpoint_error'
+    'api_endpoint_error',
+    'ethereum_send_transaction',
+    'ethereum_send_transaction_error'
 );
 
 
