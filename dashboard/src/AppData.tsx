@@ -1,4 +1,4 @@
-import {List, Map} from 'immutable';
+import {List, Map as ImmutableMap} from 'immutable';
 import React, {PureComponent} from 'react';
 import Web3 from 'web3';
 import App from './App';
@@ -42,16 +42,16 @@ type State = {
   pathname: string;
   user: User|null;
   userPermissions: UserPermission[];
-  assets: Map<number, Asset>;
+  assets: ImmutableMap<number, Asset>;
   getAsset: (id: number) => Asset|undefined;
-  assetsBySymbol: Map<AssetSymbol, number>;
+  assetsBySymbol: ImmutableMap<AssetSymbol, number>;
   getAssetBySymbol: (symbol: AssetSymbol) => Asset|undefined;
-  contractAddressByAssetId: Map<number, string>;
-  balances: Map<string, Balances>;
+  contractAddressByAssetId: ImmutableMap<number, string>;
+  balances: ImmutableMap<string, Balances>;
   getPlatformBalances: (userId: string) => Balances|undefined;
   availableErc20Withdrawals: number|undefined;
   getAvailableErc20Withdrawals: () => number|undefined;
-  histories: Map<string, History>;
+  histories: ImmutableMap<string, History>;
   defaultWithdrawalAddress: string;
   redditClientId: string;
   redditRedirectUri: string;
@@ -65,6 +65,8 @@ type State = {
 type PropTypes = {};
 class AppData extends PureComponent<PropTypes, State> {
   private _web3: Web3|null = null;
+  private ongoingGetRequests =
+      new Map<string, Promise<{response: Response, data: Object}>>();
 
   state: State;
 
@@ -78,16 +80,16 @@ class AppData extends PureComponent<PropTypes, State> {
       pathname: location.pathname,
       user: null,
       userPermissions: [],
-      assets: Map<number, Asset>(),
+      assets: ImmutableMap<number, Asset>(),
       getAsset: (id: number) => this.getAsset(id),
-      assetsBySymbol: Map<AssetSymbol, number>(),
+      assetsBySymbol: ImmutableMap<AssetSymbol, number>(),
       getAssetBySymbol: (symbol: AssetSymbol) => this.getAssetBySymbol(symbol),
-      contractAddressByAssetId: Map<number, string>(),
-      balances: Map<string, Balances>(),
+      contractAddressByAssetId: ImmutableMap<number, string>(),
+      balances: ImmutableMap<string, Balances>(),
       getPlatformBalances: (userId: string) => this.getPlatformBalances(userId),
       availableErc20Withdrawals: undefined,
       getAvailableErc20Withdrawals: () => this.getAvailableErc20Withdrawals(),
-      histories: Map<string, History>(),
+      histories: ImmutableMap<string, History>(),
       defaultWithdrawalAddress: '',
       redditClientId: '',
       redditRedirectUri: '',
@@ -493,9 +495,9 @@ class AppData extends PureComponent<PropTypes, State> {
         (fetchOptions['headers'] as any)['Content-Type'] = 'application/json';
         (fetchOptions as any)['body'] = JSON.stringify(body);
       }
-      const result = await fetch(API_BASE + path, fetchOptions);
-      const data = ensureObject(await result.json());
-      if (result.status == 200) {
+      const {response, data} =
+          await this.fetch(method, `${API_BASE}${path}`, fetchOptions);
+      if (response.status == 200) {
         return data;
       } else {
         this.setState({error: data});
@@ -505,6 +507,33 @@ class AppData extends PureComponent<PropTypes, State> {
       this.setState({error});
       throw error;
     }
+  }
+
+  private async fetch(
+      method: HttpMethod,
+      url: string,
+      options: Object):
+      Promise<{response: Response, data: Object}> {
+    const key =
+        method == HttpMethod.GET ? `${url}:${JSON.stringify(options)}`
+        : '';
+    if (key) {
+      const ongoing = this.ongoingGetRequests.get(key);
+      if (ongoing) {
+        return ongoing;
+      }
+    }
+    const promise = fetch(url, options).then(async (response: Response) => ({
+      response,
+      data: await response.json(),
+    }));
+    if (key) {
+      this.ongoingGetRequests.set(key, promise);
+    }
+    const result = await promise;
+    this.ongoingGetRequests.delete(key);
+    const data = ensureObject(result);
+    return result;
   }
 
   private get web3(): Web3|null {
