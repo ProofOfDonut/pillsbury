@@ -13,6 +13,7 @@ type PropTypes = {
   getDepositId: () => Promise<string>;
   getContractAddress: () => Promise<string>;
   getRedditHub: () => string;
+  getSupportSubreddit: () => string;
 };
 type State = {
   selectedTab: AccountType;
@@ -52,12 +53,14 @@ class DepositPage extends PureComponent<PropTypes, State> {
 
   private renderRedditDepositInstructions() {
     const redditHub = this.props.getRedditHub();
-    if (!redditHub) {
+    const supportSubreddit = this.props.getSupportSubreddit();
+    if (!redditHub || !supportSubreddit) {
       return <CircularProgress />
     }
     return (
       <RedditDepositInstructions
-          redditHub={redditHub} />
+          redditHub={redditHub}
+          supportSubreddit={supportSubreddit} />
     );
   }
 }

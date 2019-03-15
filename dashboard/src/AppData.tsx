@@ -58,6 +58,8 @@ type State = {
   getRedditLoginConfig: () => [string, string]|undefined;
   redditHub: string;
   getRedditHub: () => string;
+  supportSubreddit: string;
+  getSupportSubreddit: () => string;
   unacceptedUserTerms: UserTerm[];
   allUserTerms: UserTerm[]|null;
   getAllUserTerms: () => UserTerm[];
@@ -96,6 +98,8 @@ class AppData extends PureComponent<PropTypes, State> {
       getRedditLoginConfig: () => this.getRedditLoginConfig(),
       redditHub: '',
       getRedditHub: () => this.getRedditHub(),
+      supportSubreddit: '',
+      getSupportSubreddit: () => this.getSupportSubreddit(),
       unacceptedUserTerms: [],
       allUserTerms: null,
       getAllUserTerms: () => this.getAllUserTerms(),
@@ -128,37 +132,36 @@ class AppData extends PureComponent<PropTypes, State> {
   }
 
   render() {
-    return (
-      <App
-          initialized={this.state.initialized}
-          error={this.state.error}
-          apiAvailable={this.state.apiAvailable}
-          csrfToken={this.state.csrfToken}
-          pathname={this.state.pathname}
-          setPathname={this.setPathname}
-          user={this.state.user}
-          userPermissions={this.state.userPermissions}
-          logout={this.logout}
-          getAsset={this.state.getAsset}
-          getAssetBySymbol={this.state.getAssetBySymbol}
-          asyncGetAssetBySymbol={this.asyncGetAssetBySymbol}
-          getPlatformBalances={this.state.getPlatformBalances}
-          refreshPlatformBalances={this.refreshPlatformBalances}
-          getMetaMaskBalance={this.getMetaMaskBalance}
-          histories={this.state.histories}
-          depositTokens={this.getTokenDepositer()}
-          getAvailableErc20Withdrawals={this.state.getAvailableErc20Withdrawals}
-          withdraw={this.withdraw}
-          defaultWithdrawalAddress={this.state.defaultWithdrawalAddress}
-          getDepositId={() => this.asyncGetDepositId(ensure(this.state.user).id)}
-          getContractAddress={this.tmpAsyncGetDonutContractAddress}
-          getRedditLoginConfig={this.state.getRedditLoginConfig}
-          getRedditHub={this.state.getRedditHub}
-          unacceptedUserTerms={this.state.unacceptedUserTerms}
-          acceptUserTerm={this.acceptUserTerm}
-          getAllUserTerms={this.state.getAllUserTerms}
-          setUserTerms={this.setUserTerms} />
-    );
+    return <App
+        initialized={this.state.initialized}
+        error={this.state.error}
+        apiAvailable={this.state.apiAvailable}
+        csrfToken={this.state.csrfToken}
+        pathname={this.state.pathname}
+        setPathname={this.setPathname}
+        user={this.state.user}
+        userPermissions={this.state.userPermissions}
+        logout={this.logout}
+        getAsset={this.state.getAsset}
+        getAssetBySymbol={this.state.getAssetBySymbol}
+        asyncGetAssetBySymbol={this.asyncGetAssetBySymbol}
+        getPlatformBalances={this.state.getPlatformBalances}
+        refreshPlatformBalances={this.refreshPlatformBalances}
+        getMetaMaskBalance={this.getMetaMaskBalance}
+        histories={this.state.histories}
+        depositTokens={this.getTokenDepositer()}
+        getAvailableErc20Withdrawals={this.state.getAvailableErc20Withdrawals}
+        withdraw={this.withdraw}
+        defaultWithdrawalAddress={this.state.defaultWithdrawalAddress}
+        getDepositId={() => this.asyncGetDepositId(ensure(this.state.user).id)}
+        getContractAddress={this.tmpAsyncGetDonutContractAddress}
+        getRedditLoginConfig={this.state.getRedditLoginConfig}
+        getRedditHub={this.state.getRedditHub}
+        getSupportSubreddit={this.state.getSupportSubreddit}
+        unacceptedUserTerms={this.state.unacceptedUserTerms}
+        acceptUserTerm={this.acceptUserTerm}
+        getAllUserTerms={this.state.getAllUserTerms}
+        setUserTerms={this.setUserTerms} />;
   }
 
   private async getCsrfToken(): Promise<string> {
@@ -476,6 +479,29 @@ class AppData extends PureComponent<PropTypes, State> {
     const response = await this.apiRequest(HttpMethod.GET, '/reddit/hub');
     ensureObject(response);
     return ensurePropString(response, 'username');
+  }
+
+  private getSupportSubreddit = (): string => {
+    if (this.state.supportSubreddit) {
+      return this.state.supportSubreddit;
+    }
+    this.updateSupportSubreddit();
+    return '';
+  };
+
+  private async updateSupportSubreddit() {
+    const supportSubreddit = await this.asyncGetSupportSubreddit();
+    this.setState({
+      supportSubreddit,
+      getSupportSubreddit: () => this.getSupportSubreddit(),
+    });
+  }
+
+  private async asyncGetSupportSubreddit(): Promise<string> {
+    const response =
+        await this.apiRequest(HttpMethod.GET, '/reddit/support-sub');
+    ensureObject(response);
+    return ensurePropString(response, 'subreddit');
   }
 
   private async apiRequest(

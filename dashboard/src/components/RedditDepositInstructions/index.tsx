@@ -37,6 +37,7 @@ type PropTypes = {
     imageContainer: string;
   };
   redditHub: string;
+  supportSubreddit: string;
 };
 type State = {};
 class RedditDepositInstructions extends PureComponent<PropTypes, State> {
@@ -69,10 +70,10 @@ class RedditDepositInstructions extends PureComponent<PropTypes, State> {
             </p>
           </div>
           <p>
-            Having trouble? Send a message to
+            Having trouble? Come to
             {' '}
-            <a href={`https://www.reddit.com/message/compose/?to=${this.props.redditHub}`}>
-              /u/{this.props.redditHub}
+            <a href={`https://www.reddit.com/r/${this.props.supportSubreddit}`}>
+              /r/{this.props.supportSubreddit}
             </a>
             {' '}
             for support.

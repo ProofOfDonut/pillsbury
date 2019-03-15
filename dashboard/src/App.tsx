@@ -64,6 +64,7 @@ type PropTypes = {
   getContractAddress: () => Promise<string>;
   getRedditLoginConfig: () => [string, string]|undefined;
   getRedditHub: () => string;
+  getSupportSubreddit: () => string;
   unacceptedUserTerms: UserTerm[];
   acceptUserTerm: (termId: number) => void;
   getAllUserTerms: () => UserTerm[];
@@ -205,7 +206,8 @@ class App extends PureComponent<PropTypes, State> {
           getMetaMaskBalance={this.props.getMetaMaskBalance}
           getDepositId={this.props.getDepositId}
           getContractAddress={this.props.getContractAddress}
-          getRedditHub={this.props.getRedditHub} />
+          getRedditHub={this.props.getRedditHub}
+          getSupportSubreddit={this.props.getSupportSubreddit} />
     );
   };
 

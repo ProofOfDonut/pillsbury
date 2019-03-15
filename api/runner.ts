@@ -10,6 +10,7 @@ import {routeAssetWithdraw} from './endpoints/asset/withdraw';
 import {routeRedditConfig} from './endpoints/reddit/config';
 import {routeRedditHub} from './endpoints/reddit/hub';
 import {routeRedditLogin} from './endpoints/reddit/login';
+import {routeRedditSupportSub} from './endpoints/reddit/support-sub';
 import {
   routeUserAvailableErc20Withdrawals,
 } from './endpoints/user/available_erc20_withdrawals';
@@ -60,6 +61,7 @@ async function main() {
   routeRedditConfig(apiServer);
   routeRedditHub(apiServer);
   routeRedditLogin(apiServer, glazeDb);
+  routeRedditSupportSub(apiServer, glazeDb);
   routeUserAvailableErc20Withdrawals(apiServer, glazeDb);
   routeUserBalances(apiServer, glazeDb);
   routeUserDepositId(apiServer, glazeDb);

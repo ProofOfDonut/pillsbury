@@ -629,6 +629,11 @@ export class GlazeDbClient {
     return terms;
   }
 
+  async getSupportSubreddit() {
+    // TODO: Make this configurable.
+    return 'donuttrader';
+  }
+
   async logEvent(type: EventLogType, data: string) {
     await this.pgClient.query`
       INSERT INTO event_logs (type, data)
