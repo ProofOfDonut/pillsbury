@@ -269,8 +269,8 @@ export class ApiServer {
       const data = JSON.stringify({
         'method': req.method,
         'route': route,
-        'params': JSON.stringify(req.params),
-        'body': JSON.stringify(req.body),
+        'params': req.params,
+        'body': req.body,
       });
       await this.glazeDb.logEvent(EventLogType.API_ENDPOINT, data);
     }
@@ -280,9 +280,10 @@ export class ApiServer {
         route: string,
         error: any) {
       const data = JSON.stringify({
+        'method': req.method,
         'route': route,
-        'params': JSON.stringify(req.params),
-        'body': JSON.stringify(req.body),
+        'params': req.params,
+        'body': req.body,
         'error': errorToString(error),
       });
       await this.glazeDb.logEvent(EventLogType.API_ENDPOINT_ERROR, data);

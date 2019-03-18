@@ -9,6 +9,7 @@ import {
   ensurePropString,
   ensureSafeInteger,
 } from '../common/ensure';
+import {errorToString} from '../common/errors';
 import {readFile} from '../common/io/files/read';
 import {GlazeDbClient} from '../glaze_db';
 import {RedditPuppetEngine, createRedditPuppetEngine} from './engine';
@@ -25,7 +26,7 @@ export async function createRedditPuppetServer(
           redditHubConfig.password,
           glazeDb);
   const app = await initExpress(host, port);
-  return new RedditPuppetServer(engine, app, port);
+  return new RedditPuppetServer(engine, glazeDb, app, port);
 }
 
 export class RedditPuppetServer {
@@ -33,50 +34,76 @@ export class RedditPuppetServer {
   private app: Application;
   port: number;
 
-  constructor(engine: RedditPuppetEngine, app: Application, port: number) {
+  constructor(
+      engine: RedditPuppetEngine,
+      glazeDb: GlazeDbClient,
+      app: Application,
+      port: number) {
     this.engine = engine;
     this.app = app;
     this.port = port;
 
-    this.app.post('/send::to::amount', async (req: Request, res: Response) => {
+    this.post('/send::to::amount', async (req: Request, res: Response) => {
       res.status(400).type('json').end(JSON.stringify({
         'message': 'Endpoint disabled.',
       }));
       return;
 
       // const recipient = ensurePropString(req.params, 'to');
-      // const amount = ensureSafeInteger(+ensurePropString(req.params, 'amount'));
-      // try {
-      //   // TODO: Maybe before actually sending, it should check with the DB to
-      //   // ensure the recipient actually does have that many donuts in his
-      //   // account.
-      //   await this.engine.sendDonuts(recipient, amount);
-      //   res.end();
-      // } catch (err) {
-      //   this.handleError(
-      //       res, err, `When sending ${amount} donuts to ${recipient}`);
-      // }
+      // const amount =
+      //     ensureSafeInteger(+ensurePropString(req.params, 'amount'));
+      //
+      // // TODO: Maybe before actually sending, it should check with the DB to
+      // // ensure the recipient actually does have that many donuts in his
+      // // account.
+      // await this.engine.sendDonuts(recipient, amount);
+      // res.end();
     });
 
-    this.app.post(
+    this.post(
         '/update-reddit-hub-bearer-token',
         async (req: Request, res: Response) => {
+      await this.engine.updateRedditHubBearerToken();
+      res.end();
+    });
+  }
+
+  private post(
+      route: string,
+      callback: (req: Request, res: Response) => Promise<void>) {
+    this.app.post(route, async (req: Request, res: Response) => {
+      this.glazeDb.logEvent(
+          EventLogType.REDDIT_PUPPET_ENDPOINT,
+          JSON.stringify({
+            'method': req.method,
+            'route': route,
+            'params': req.params,
+            'body': req.body,
+          });
       try {
-        await this.engine.updateRedditHubBearerToken();
-        res.end();
-      } catch (err) {
-        this.handleError(res, err, 'When updating Reddit hub bearer token');
+        await callback(req, res);
+      } catch (e) {
+        this.handleError(req, res, err, route);
       }
     });
   }
 
-  private handleError(res: Response, err: Error, detail: string) {
+  private handleError(req: Request, res: Response, err: Error, route: string) {
     console.error(
         '---- '
         + new Date().toLocaleString('en-US', {timeZone: 'America/New_York'})
         + ' ----');
-    console.error(detail);
-    console.error(err ? err.stack || err.message || err : err);
+    console.error(`Error for route ${route}:`);
+    console.error(errorToString(err));
+    this.glazeDb.logEvent(
+        EventLogType.REDDIT_PUPPET_ENDPOINT_ERROR,
+        JSON.stringify({
+          'method': req.method,
+          'route': route,
+          'params': req.params,
+          'body': req.body,
+          'error': errorToString(err),
+        }));
     res.status(500).type('json').end(JSON.stringify({
       'message': err && err.message,
       'stack': err && err.stack,

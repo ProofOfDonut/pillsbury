@@ -77,7 +77,10 @@ CREATE TYPE public.event_type AS ENUM (
     'api_endpoint',
     'api_endpoint_error',
     'ethereum_send_transaction',
-    'ethereum_send_transaction_error'
+    'ethereum_send_transaction_error',
+    'reddit_message_received',
+    'reddit_puppet_endpoint',
+    'reddit_puppet_endpoint_error'
 );
 
 

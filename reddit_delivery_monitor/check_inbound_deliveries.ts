@@ -1,7 +1,8 @@
 import {ensure} from '../common/ensure';
 import {formatNumber} from '../common/numbers/format';
+import {EventType} from '../common/types';
 import {GlazeDbClient} from '../glaze_db';
-import {RedditClient} from '../lib/reddit';
+import {Message, RedditClient} from '../lib/reddit';
 import {sendRedditDonuts} from '../reddit_puppet';
 import {DonutDelivery} from './donut_delivery';
 import {getInboundDonuts} from './inbound_donuts';
@@ -18,7 +19,10 @@ export async function checkInboundDeliveries(
     redditPuppetPort: number,
     lastKnownDelivery: string):
     Promise<string> {
-  const deliveries = await getInboundDonuts(redditClient, lastKnownDelivery);
+  const deliveries = await getInboundDonuts(
+      redditClient,
+      lastKnownDelivery,
+      (messages: Message[]) => logMessages(glazeDb, messages));
   if (deliveries.length > 0) {
     const successfulDeliveries =
         await glazeDb.addInboundDeliveries(deliveries);
@@ -120,4 +124,18 @@ function groupDeliveriesBySource(
     }
   }
   return [...groups.values()];
+}
+
+function logMessages(
+    glazeDb: GlazeDbClient,
+    messages: Message[]): Promoise<void> {
+      return glazeDb.logEvent(
+          EventType.MESSAGE_RECEIVED,
+          JSON.stringify(messages.map(u => ({
+            'id': u.id,
+            'author': u.author,
+            'subject': u.subject,
+            'body': u.body,
+            'date': u.date,
+          }))));
 }

@@ -1,5 +1,5 @@
 import {ensureNotEqual, ensureSafePositiveInteger} from '../common/ensure';
-import {RedditClient} from '../lib/reddit';
+import {Message, RedditClient} from '../lib/reddit';
 import {DonutDelivery} from './donut_delivery';
 
 const BODY_RE =
@@ -7,9 +7,13 @@ const BODY_RE =
 
 export async function getInboundDonuts(
     redditClient: RedditClient,
-    lastKnownMessage: string):
+    lastKnownMessage: string,
+    logMessages: (messages: Message[]) => Promise<void>):
     Promise<Array<DonutDelivery>> {
   const messages = await redditClient.getMessages(lastKnownMessage);
+  if (messages.length > 0) {
+    await logMessages(messages);
+  }
   const deliveries: Array<DonutDelivery> = [];
   for (const message of messages) {
     if (message.author == 'CommunityPoints'
