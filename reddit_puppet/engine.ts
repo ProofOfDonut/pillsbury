@@ -35,37 +35,62 @@ export async function createRedditPuppetEngine(
     password: string,
     glazeDb: GlazeDbClient):
     Promise<RedditPuppetEngine> {
-  const browser = await puppeteer.launch({
-    'args': ['--no-sandbox'],
-    'defaultViewport': {
-      // Reddit becomes 1 column, losing the column with community points, at
-      // around 960 pixels.
-      'width': 1000,
-      'height': 800,
-    },
-  });
-  return new RedditPuppetEngine(browser, username, password, glazeDb);
+  return new RedditPuppetEngine(username, password, glazeDb);
 }
 
 export class RedditPuppetEngine {
-  private browser: Browser;
   private hubUsername: string;
   private hubPassword: string;
   private glazeDb: GlazeDbClient;
+  private browsers: Browser[] = [];
 
   constructor(
-      browser: Browser,
       username: string,
       password: string,
       glazeDb: GlazeDbClient) {
-    this.browser = browser;
     this.hubUsername = username;
     this.hubPassword = password;
     this.glazeDb = glazeDb;
   }
 
-  async close() {
-    await this.browser.close();
+  // Problems have occurred where Reddit Puppet ended up with an old
+  // authentication token which worked for accessing a subreddit but didn't
+  // work for sending donuts. This seemed possibly related to being logged in
+  // during preferences changes (changing Reddit redesign preference). When
+  // these problems were observed, a single browser instance was being created
+  // at instantiation time and shared for all method calls after that. Creating
+  // a new browser for each task, as we're doing now, may alleviate the problem
+  // because cookies are cleared for each new browser created. This may also
+  // save on some overhead, since when the browser isn't needed it can be
+  // closed.
+  private async createBrowser(): Promise<Browser> {
+    const browser = await puppeteer.launch({
+      'args': ['--no-sandbox'],
+      'defaultViewport': {
+        // Reddit becomes 1 column, losing the column with community points, at
+        // around 960 pixels.
+        'width': 1000,
+        'height': 800,
+      },
+    });
+    this.browsers.push(browser);
+    return browser;
+  }
+
+  async close(browser: Browser) {
+    for (let i = 0; i < this.browsers.length; i++) {
+      if (this.browsers[i] == browser) {
+        this.browsers.splice(i, 1);
+        break;
+      }
+    }
+    await browser.close();
+  }
+
+  async closeAll() {
+    const browsers = this.browsers;
+    this.browsers = [];
+    await Promise.all(browsers.map(u => u.close()));
   }
 
   // It should be safe to expose `getRedditHubBearerToken` as an endpoint but to
@@ -277,7 +302,8 @@ export class RedditPuppetEngine {
   }
 
   private async withPage<T>(callback: (page: Page) => Promise<T>) {
-    const page = await this.browser.newPage();
+    const browser = await this.createBrowser();
+    const page = await browser.newPage();
     try {
       // Note: `await` is needed below! It is not redundant! Without it the
       // `try`/`catch` will be ignored.
@@ -289,6 +315,7 @@ export class RedditPuppetEngine {
       throw err;
     } finally {
       await page.close();
+      await this.close(browser);
     }
   }
 }

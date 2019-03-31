@@ -4,6 +4,7 @@ import {
   ensureArray,
   ensureEqual,
   ensureObject,
+  ensureProp,
   ensurePropDate,
   ensurePropInEnum,
   ensurePropNumber,
@@ -13,6 +14,7 @@ import {
   ensureSafeInteger,
   ensureString,
 } from '../common/ensure';
+import {errorToString} from '../common/errors';
 import {Account} from '../common/types/Account';
 import {
   Asset, AssetName, AssetSymbol, assetSymbolFromString,
@@ -20,7 +22,9 @@ import {
 import {Balances} from '../common/types/Balances';
 import {EventLogType} from '../common/types/EventLogType';
 import {QueuedTransaction} from '../common/types/QueuedTransaction';
+import {SignedWithdrawal} from '../common/types/SignedWithdrawal';
 import {User} from '../common/types/User';
+import {WithdrawalType} from '../common/types/Withdrawal';
 import {
   ALL_USER_PERMISSION_VALUES, UserPermission,
 } from '../common/types/UserPermission';
@@ -311,44 +315,111 @@ export class GlazeDbClient {
         symbol);
   }
 
-  async getAssetContractDetails(
-      id: number):
-      Promise<{abi: any}> {
-    const row = this.ensureOne(await this.pgClient.query`
-      SELECT abi
-          FROM assets
-          WHERE id = ${id}
-          LIMIT 1;`);
-    return {
-      abi: JSON.parse(ensurePropString(row, 'abi')),
-    };
-  }
-
   async withdraw(
       userId: number,
-      to: Account,
+      type: WithdrawalType,
+      username: string,
       assetId: number,
       amount: number):
       Promise<number> {
     const row = this.ensureOne(await this.pgClient.query`
-      SELECT withdraw(${userId}, ${to}, ${assetId}, ${amount});`);
+      SELECT withdraw(
+          ${userId}, ${type}, ${username}, ${assetId}, ${amount});`);
     return ensurePropNumber(row, 'withdraw');
   }
 
-  async updateWithdrawal(id: number, transactionId: string): Promise<void> {
+  async withdrawalSigned(
+      id: number,
+      signedWithdrawal: SignedWithdrawal):
+      Promise<void> {
     await this.pgClient.query`
       UPDATE withdrawals
-          SET transaction_id = ${transactionId},
-              success = TRUE
+          SET receipt = (
+                'ethereum_signed_withdrawal',
+                ${JSON.stringify(signedWithdrawal)}
+              )::withdrawal_receipt,
+          needs_manual_review = FALSE
           WHERE id = ${id};`;
   }
 
-  async withdrawalError(id: number, errorMessage: string): Promise<void> {
+  async redditWithdrawalSucceeded(
+      id: number,
+      redditId: string):
+      Promise<void> {
+    await this.pgClient.query`
+      UPDATE withdrawals
+          SET receipt = (
+                'reddit_message_id',
+                ${redditId}
+              )::withdrawal_receipt,
+              success = TRUE,
+              needs_manual_review = FALSE
+          WHERE id = ${id};`;
+  }
+
+  async withdrawalFailed(
+      id: number,
+      errorMessage: string,
+      withdrawalNeedsReview: boolean,
+      refundWithdrawal: boolean):
+      Promise<void> {
+    // We're expecting these values to be inverses. The reason we're requiring
+    // both to be passed is simply to confirm that funds are actually going to
+    // be refunded if `withdrawalNeedsReview` is false.
+    ensure(!withdrawalNeedsReview && refundWithdrawal);
+    let refunded = false;
+    if (refundWithdrawal) {
+      try {
+        await this.refundFailedWithdrawal(id);
+        refunded = true;
+      } catch (err) {
+        console.warn(
+            `WARNING: Error refunding withdrawal: ${errorToString(err)}`);
+        this.logEvent(
+            EventLogType.WITHDRAWAL_REFUND_ERROR,
+            JSON.stringify({
+              'withdrawal_id': id,
+              'error': errorToString(err),
+            }));
+      }
+    }
     await this.pgClient.query`
       UPDATE withdrawals
           SET success = FALSE,
-              error = ${errorMessage}
+              error = ${errorMessage},
+              needs_manual_review = ${withdrawalNeedsReview},
+              refunded = ${refunded}
           WHERE id = ${id};`;
+  }
+
+  async refundFailedWithdrawal(id: number): Promise<void> {
+    const row = this.ensureOne(await this.pgClient.query`
+      SELECT from_user_id,
+             asset_id,
+             amount,
+             success,
+             error
+          FROM withdrawals
+          WHERE id = ${id}
+          LIMIT 1;`);
+    const userId = ensurePropSafeInteger(row, 'from_user_id');
+    const assetId = ensurePropSafeInteger(row, 'asset_id');
+    const amount = ensurePropSafeInteger(row, 'amount');
+    const successRaw = ensureProp(row, 'success');
+    let success: boolean|null = null;
+    if (typeof successRaw == 'boolean') {
+      success = <boolean> successRaw;
+    } else {
+      ensureEqual(successRaw, null);
+    }
+    const error = ensurePropString(row, 'error');
+    // Sanity check to ensure that this withdrawal hasn't been refunded already.
+    ensure(success == null && error == '');
+    await this.pgClient.query`
+      UPDATE balances
+          SET balance = balance + ${amount}
+          WHERE user_id = ${userId}
+              AND asset_id = ${assetId};`;
   }
 
   async enqueueTransaction(tx: QueuedTransaction): Promise<string> {
@@ -381,7 +452,10 @@ export class GlazeDbClient {
       Promise<void> {
     await this.pgClient.query`
       UPDATE queued_transactions
-          SET transaction_id = ${transactionId}
+          SET receipt = (
+            'ethereum_transaction_id',
+            ${transactionId}
+          )::withdrawal_receipt
           WHERE id = ${id};`;
   }
 
@@ -487,9 +561,10 @@ export class GlazeDbClient {
   // negative.
   async logSubredditBalance(
       subredditId: number,
+      assetId: number,
       amount: number):
       Promise<number> {
-    const expectedAmount = await this.getExpectedRedditHubBalance();
+    const expectedAmount = await this.getExpectedRedditHubBalance(assetId);
     // Only log when the balance changes.
     const row = this.maybeOne(await this.pgClient.query`
       SELECT amount, expected_amount
@@ -513,17 +588,17 @@ export class GlazeDbClient {
   }
 
   // Returns the balance that's expected to be held in the Reddit hub accounts.
-  private async getExpectedRedditHubBalance(): Promise<number> {
+  private async getExpectedRedditHubBalance(assetId: number): Promise<number> {
     const row = this.ensureOne(await this.pgClient.query`
       SELECT
           (SELECT coalesce(sum(deposited_amount), 0)
               FROM deliveries
-              WHERE asset_id = 1)
+              WHERE asset_id = ${assetId})
           - (SELECT coalesce(sum(amount), 0)
               FROM withdrawals
-              WHERE asset_id = 1
+              WHERE asset_id = ${assetId}
                   AND (recipient).type = 'reddit_user'
-                  AND success) AS sum;`);
+                  AND (success OR success IS NULL)) AS sum;`);
     return ensureSafeInteger(+ensurePropString(row, 'sum'));
   }
 

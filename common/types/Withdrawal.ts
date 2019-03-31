@@ -1,21 +1,33 @@
-import {Account} from './Account';
 import {Asset} from './Asset';
+import {SignedWithdrawal} from './SignedWithdrawal';
+
+export enum WithdrawalType {
+  REDDIT = 'reddit',
+  ETHEREUM = 'ethereum',
+}
 
 export class Withdrawal {
-  to: Account;
+  type: WithdrawalType;
+  username: string;
   asset: Asset;
   amount: number;
-  // Either a transaction hash (if `to` is an Ethereum address) or a Reddit
-  // message ID (if `to` is a Reddit account).
+  messageId: string;
+  signedWithdrawal: SignedWithdrawal|null;
   transactionId: string;
   constructor(
-      to: Account,
+      type: WithdrawalType,
+      username: string,
       asset: Asset,
       amount: number,
+      messageId: string = '',
+      signedWithdrawal: SignedWithdrawal|null = null,
       transactionId: string = '') {
-    this.to = to;
+    this.type = type;
+    this.username = username;
     this.asset = asset;
     this.amount = amount;
+    this.messageId = messageId;
+    this.signedWithdrawal = signedWithdrawal;
     this.transactionId = transactionId;
   }
 }

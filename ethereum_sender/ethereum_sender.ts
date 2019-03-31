@@ -65,16 +65,14 @@ export class EthereumSender {
     await this.glazeDb.logEvent(
         EventLogType.ETHEREUM_SEND_TRANSACTION,
         JSON.stringify(tx));
-    let pendingTx: PendingTransaction; 
     try {
-      pendingTx = await this.ethereumClient.sendTransaction(tx);
+      return await this.ethereumClient.sendTransaction(tx);
     } catch (e) {
       await this.glazeDb.logEvent(
           EventLogType.ETHEREUM_SEND_TRANSACTION_ERROR,
           JSON.stringify({'error': errorToString(e)}));
       throw e;
     }
-    return pendingTx;
   }
 
   private async transactionSent(pendingTx: PendingTransaction) {

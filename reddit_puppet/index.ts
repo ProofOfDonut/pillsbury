@@ -1,1 +1,1 @@
-export {sendRedditDonuts} from './call_helpers/send_donuts';
+export {RefundableError, sendRedditDonuts} from './call_helpers/send_donuts';

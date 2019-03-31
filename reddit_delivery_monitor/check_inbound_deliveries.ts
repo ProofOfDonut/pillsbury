@@ -1,6 +1,6 @@
 import {ensure} from '../common/ensure';
 import {formatNumber} from '../common/numbers/format';
-import {EventType} from '../common/types';
+import {EventLogType} from '../common/types/EventLogType';
 import {GlazeDbClient} from '../glaze_db';
 import {Message, RedditClient} from '../lib/reddit';
 import {sendRedditDonuts} from '../reddit_puppet';
@@ -128,9 +128,9 @@ function groupDeliveriesBySource(
 
 function logMessages(
     glazeDb: GlazeDbClient,
-    messages: Message[]): Promoise<void> {
+    messages: Message[]): Promise<void> {
       return glazeDb.logEvent(
-          EventType.MESSAGE_RECEIVED,
+          EventLogType.REDDIT_MESSAGE_RECEIVED,
           JSON.stringify(messages.map(u => ({
             'id': u.id,
             'author': u.author,

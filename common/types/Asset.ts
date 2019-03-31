@@ -50,7 +50,7 @@ export class Asset {
     this.symbol = symbol;
   }
 
-  toJSON() {
+  toJSON(): Object {
     return {
       'id': this.id,
       'subreddit': this.subreddit,

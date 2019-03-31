@@ -1,10 +1,10 @@
 import CircularProgress from '@material-ui/core/CircularProgress';
 import React, {PureComponent, ReactNode} from 'react';
 import {ensure, ensurePropString, ensureSafeInteger} from '../common/ensure';
-import {Account, AccountType} from '../common/types/Account';
+import {AccountType} from '../common/types/Account';
 import {Asset, AssetSymbol} from '../common/types/Asset';
 import {Balances} from '../common/types/Balances';
-import {Withdrawal} from '../common/types/Withdrawal';
+import {Withdrawal, WithdrawalType} from '../common/types/Withdrawal';
 import {User} from '../common/types/User';
 import AccountTypeBar from '../components/AccountTypeBar';
 import EmptyAccount from '../components/EmptyAccount';
@@ -109,10 +109,9 @@ class WithdrawPage extends PureComponent<PropTypes, State> {
       amount: number):
       Promise<Withdrawal> => {
     return this.withdrawTo(
+        WithdrawalType.ETHEREUM,
+        '' /* username */,
         asset,
-        new Account(
-            AccountType.ETHEREUM_ADDRESS,
-            address),
         amount);
   };
 
@@ -121,26 +120,20 @@ class WithdrawPage extends PureComponent<PropTypes, State> {
       amount: number):
       Promise<Withdrawal> => {
     return this.withdrawTo(
+        WithdrawalType.REDDIT,
+        this.props.user.username,
         asset,
-        new Account(
-            AccountType.REDDIT_USER,
-            this.props.user.username),
         amount);
   };
 
   private async withdrawTo(
+      type: WithdrawalType,
+      username: string,
       asset: Asset,
-      account: Account,
       amount: number):
       Promise<Withdrawal> {
-    const withdrawal = new Withdrawal(account, asset, amount);
-    const response = await this.props.withdraw(withdrawal);
-    if (typeof response == 'object' && response != null) {
-      if (response['transaction_id']) {
-        withdrawal.transactionId = ensurePropString(response, 'transaction_id');
-      }
-    }
-    return withdrawal;
+    return this.props.withdraw(
+        new Withdrawal(type, username, asset, amount));
   }
 }
 

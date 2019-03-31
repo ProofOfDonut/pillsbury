@@ -5,6 +5,7 @@ import {readFile} from '../common/io/files/read';
 import {AssetSymbol} from '../common/types/Asset';
 import {EthereumClient, createEthereumClient} from '../lib/ethereum';
 import {GlazeDbClient} from '../glaze_db';
+import {abi} from '../token/BUIDL/output/Donut';
 
 export async function createEthereumMonitor(
     ethereumNodeConfigFile: string,
@@ -12,7 +13,6 @@ export async function createEthereumMonitor(
     getContractAddress: (chainId: number, assetId: number) => string):
     Promise<EthereumMonitor> {
   const asset = await glazeDb.getAssetBySymbol(AssetSymbol.DONUT);
-  const {abi} = await glazeDb.getAssetContractDetails(asset.id);
   // TODO: Make chain ID configurable.
   const chainId = 1;
   const address = getContractAddress(chainId, asset.id);

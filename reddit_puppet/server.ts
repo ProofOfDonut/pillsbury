@@ -11,6 +11,7 @@ import {
 } from '../common/ensure';
 import {errorToString} from '../common/errors';
 import {readFile} from '../common/io/files/read';
+import {EventLogType} from '../common/types/EventLogType';
 import {GlazeDbClient} from '../glaze_db';
 import {RedditPuppetEngine, createRedditPuppetEngine} from './engine';
 
@@ -32,6 +33,7 @@ export async function createRedditPuppetServer(
 export class RedditPuppetServer {
   private engine: RedditPuppetEngine;
   private app: Application;
+  private glazeDb: GlazeDbClient;
   port: number;
 
   constructor(
@@ -42,6 +44,7 @@ export class RedditPuppetServer {
     this.engine = engine;
     this.app = app;
     this.port = port;
+    this.glazeDb = glazeDb;
 
     this.post('/send::to::amount', async (req: Request, res: Response) => {
       res.status(400).type('json').end(JSON.stringify({
@@ -79,10 +82,10 @@ export class RedditPuppetServer {
             'route': route,
             'params': req.params,
             'body': req.body,
-          });
+          }));
       try {
         await callback(req, res);
-      } catch (e) {
+      } catch (err) {
         this.handleError(req, res, err, route);
       }
     });

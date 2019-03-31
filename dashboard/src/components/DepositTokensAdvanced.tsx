@@ -2,7 +2,7 @@ import CircularProgress from '@material-ui/core/CircularProgress';
 import {Theme, withStyles} from '@material-ui/core/styles';
 import React, {PureComponent} from 'react';
 import {ensure} from '../common/ensure';
-import {DEPOSITABLE_ABI} from '../config';
+import {abi as DEPOSITABLE_ABI} from '../contract_config';
 import Module, {ModuleStatus} from './Module';
 
 const styles = (theme: Theme) => ({

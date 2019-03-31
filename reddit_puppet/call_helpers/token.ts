@@ -1,4 +1,5 @@
 import {ensure} from '../../common/ensure';
+import {errorToString} from '../../common/errors';
 import {Method, request} from '../../common/net/request';
 import {GlazeDbClient} from '../../glaze_db';
 
@@ -33,8 +34,29 @@ async function fetchNewToken(
     host: string,
     port: number):
     Promise<string> {
-  await request(
-      Method.POST,
-      `http://${host}:${port}/update-reddit-hub-bearer-token`);
-  return ensure(await glazeDb.getRedditHubBearerToken());
+  try {
+    await request(
+        Method.POST,
+        `http://${host}:${port}/update-reddit-hub-bearer-token`);
+    return ensure(await glazeDb.getRedditHubBearerToken());
+  } catch (err) {
+    throw new FetchTokenError(err);
+  }
+}
+
+const fetchTokenErrorTag = Symbol('FetchTokenError');
+export class FetchTokenError extends Error {
+  private [fetchTokenErrorTag] = true;
+
+  originalError: Error;
+
+  static is(value: Error): boolean {
+    return value && value[fetchTokenErrorTag] == true;
+  }
+
+  constructor(err: Error) {
+    super(`Fetch token error: ${errorToString(err)}`);
+
+    this.originalError = err;
+  }
 }

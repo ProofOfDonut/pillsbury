@@ -112,13 +112,10 @@ class WithdrawTokens extends PureComponent<PropTypes, State> {
       moduleStatus: new ModuleStatus(
           false,
           (<div>
-            <div>
-              Successfully withdrew
-              {' '}{withdrawal.asset.name.format(withdrawal.amount)}{' to'}
-              <br />
-              <AddressLink address={withdrawal.to.toString()} />
-            </div>
-            {this.renderTransactionLink(withdrawal)}
+            <p>
+              Your have successfully withdrawn{' '}
+              {withdrawal.asset.name.format(withdrawal.amount)}.
+            </p>
           </div>)),
     });
   }

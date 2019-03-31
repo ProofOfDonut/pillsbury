@@ -6,5 +6,10 @@ export enum EventLogType {
   REDDIT_MESSAGE_RECEIVED = 'reddit_message_received',
   REDDIT_PUPPET_ENDPOINT = 'reddit_puppet_endpoint',
   REDDIT_PUPPET_ENDPOINT_ERROR = 'reddit_puppet_endpoint_error',
+  REDDIT_WITHDRAWAL_CONFIRMATION_ERROR = 'reddit_withdrawal_confirmation_error',
+  WITHDRAWAL_ERROR = 'withdrawal_error',
+  WITHDRAWAL_REFUND_ERROR = 'withdrawal_refund_error',
+  BALANCE_OK = 'balance_ok',
+  BALANCE_MISMATCH = 'balance_mismatch',
 }
 

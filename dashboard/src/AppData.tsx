@@ -4,6 +4,7 @@ import Web3 from 'web3';
 import App from './App';
 import {
   ensure,
+  ensureEqual,
   ensureInEnum,
   ensureObject,
   ensurePropArray,
@@ -16,11 +17,12 @@ import {HttpMethod, httpMethodToString} from './common/net/http_method';
 import {Asset, AssetName, AssetSymbol} from './common/types/Asset';
 import {Balances} from './common/types/Balances';
 import {History} from './common/types/History';
+import {SignedWithdrawal} from './common/types/SignedWithdrawal';
 import {User} from './common/types/User';
 import {UserPermission} from './common/types/UserPermission';
 import {UserTerm} from './common/types/UserTerm';
 import {Withdrawal} from './common/types/Withdrawal';
-import {DEPOSITABLE_ABI} from './config';
+import {abi as TOKEN_ABI} from './contract_config';
 
 // TODO: What's a better way to make this configurable?
 const API_BASE =
@@ -336,7 +338,7 @@ class AppData extends PureComponent<PropTypes, State> {
       assetId: number):
       Promise<Contract> {
     const contractAddress = await this.asyncGetAssetContractAddress(assetId);
-    return new web3.eth.Contract(DEPOSITABLE_ABI, contractAddress);
+    return new web3.eth.Contract(TOKEN_ABI, contractAddress);
   }
 
   private async loadAssetContractAddress(assetId: number): Promise<string> {
@@ -418,16 +420,58 @@ class AppData extends PureComponent<PropTypes, State> {
     return ensurePropSafeInteger(response, 'available');
   }
 
-  private withdraw = async (withdrawal: Withdrawal): Promise<any> => {
+  private withdraw = async (
+      withdrawal: Withdrawal):
+      Promise<Withdrawal> => {
     const response = await this.apiRequest(
         HttpMethod.POST,
         `/asset:${withdrawal.asset.id}/withdraw:${withdrawal.amount}`,
-        {'to': withdrawal.to});
+        {
+          'type': withdrawal.type,
+          'username': withdrawal.username,
+        });
     if (this.state.user) {
       this.loadBalances(this.state.user.id);
     }
-    return response;
+    if ((response as any)['signed_withdrawal']) {
+      const signedWithdrawal = SignedWithdrawal.fromJSON(
+          ensurePropObject(response, 'signed_withdrawal'));
+      const transactionId =
+          await this.executeSignedWithdrawal(
+              withdrawal.asset,
+              signedWithdrawal);
+      return new Withdrawal(
+          withdrawal.type,
+          withdrawal.username,
+          withdrawal.asset,
+          withdrawal.amount,
+          '' /* messageId */,
+          signedWithdrawal,
+          transactionId);
+    }
+    ensureEqual(ensurePropString(response, 'message_id'), '');
+    return withdrawal;
   };
+
+  private async executeSignedWithdrawal(
+      asset: Asset,
+      signedWithdrawal: SignedWithdrawal):
+      Promise<string> {
+    const web3 = this.web3;
+    if (!web3) {
+      return '';
+    }
+    const contract = await this.asyncGetAssetContract(web3, asset.id);
+    const response = await contract.methods.withdraw(
+        signedWithdrawal.v,
+        signedWithdrawal.r,
+        signedWithdrawal.s,
+        signedWithdrawal.nonce,
+        signedWithdrawal.amount);
+    console.log(response); // DEBUG
+    // ensureEqual(response, true);
+    return ''; // TODO 
+  }
 
   private getRedditLoginConfig = (): [string, string]|undefined => {
     if (this.state.redditClientId) {

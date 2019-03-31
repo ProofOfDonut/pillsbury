@@ -2,12 +2,16 @@ import {fromV3} from 'ethereumjs-wallet';
 import Web3 = require('web3');
 import {ensure, ensurePropString} from '../../common/ensure';
 import {QueuedTransaction} from '../../common/types/QueuedTransaction';
+import {SignedWithdrawal} from '../../common/types/SignedWithdrawal';
 import {
   getMintTokenTransaction as _getMintTokenTransaction,
   sendTransaction as _sendTransaction,
 } from './mint';
 import {onDeposit as _onDeposit} from './on_deposit';
 import {PendingTransaction} from './pending_transaction';
+import {
+  signWithdrawalMessage as _signWithdrawalMessage,
+} from './sign_withdrawal_message';
 
 export function createEthereumClient(
     host: string,
@@ -85,4 +89,20 @@ export class EthereumClient {
   async withdrawalsAllowed(): Promise<boolean> {
     return true;
   }
+
+  signWithdrawalMessage(
+      tokenAddress: string,
+      tokenAbi: any,
+      nonce: string,
+      amount: number):
+      Promise<SignedWithdrawal> {
+    return _signWithdrawalMessage(
+        this.web3,
+        tokenAddress,
+        tokenAbi,
+        this.privateKey,
+        nonce,
+        amount);
+  }
+
 }

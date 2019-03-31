@@ -58,7 +58,7 @@ type PropTypes = {
   histories: Map<string, History>;
   depositTokens: ((asset: Asset, amount: number) => void)|null;
   getAvailableErc20Withdrawals: () => number|undefined;
-  withdraw: (withdawal: Withdrawal) => Promise<void>;
+  withdraw: (withdawal: Withdrawal) => Promise<Withdrawal>;
   defaultWithdrawalAddress: string;
   getDepositId: () => Promise<string>;
   getContractAddress: () => Promise<string>;

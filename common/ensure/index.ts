@@ -240,3 +240,26 @@ export function ensureInEnum<T>(
   ensure(Object.values(values).includes(value), message);
   return <T> value;
 }
+
+export function ensureHexString(
+    s: string,
+    minLength: number,
+    maxLength: number = minLength,
+    message: string = `Invalid hex string "${s}"`):
+    string {
+  ensure(/^0x[A-Fa-f0-9]+$/.test(s), message);
+  ensure(s.length >= minLength + 2 && s.length <= maxLength + 2,
+      `Expected hex string length in [${minLength}, ${maxLength}] "${s}"`);
+  return s;
+}
+
+export function ensurePropHexString(
+    obj: Object,
+    key: string,
+    minLength: number,
+    maxLength: number = minLength,
+    message: string = ''):
+    string {
+  const s = ensurePropString(obj, key, message || undefined);
+  return ensureHexString(s, minLength, maxLength, message || undefined);
+}

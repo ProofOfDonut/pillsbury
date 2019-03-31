@@ -81,7 +81,7 @@ class WithdrawTokens extends PureComponent<PropTypes, State> {
           false,
           `Successfully withdrew `
           + `${withdrawal.asset.name.format(withdrawal.amount)} to `
-          + `${withdrawal.to}.`),
+          + `/u/${withdrawal.username}.`),
     });
   };
 }

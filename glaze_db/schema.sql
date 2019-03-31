@@ -70,21 +70,41 @@ CREATE TYPE public.account AS (
 ALTER TYPE public.account OWNER TO pod_admin;
 
 --
--- Name: event_type; Type: TYPE; Schema: public; Owner: pod_admin
+-- Name: withdrawal_receipt_type; Type: TYPE; Schema: public; Owner: pod_admin
 --
 
-CREATE TYPE public.event_type AS ENUM (
-    'api_endpoint',
-    'api_endpoint_error',
-    'ethereum_send_transaction',
-    'ethereum_send_transaction_error',
-    'reddit_message_received',
-    'reddit_puppet_endpoint',
-    'reddit_puppet_endpoint_error'
+CREATE TYPE public.withdrawal_receipt_type AS ENUM (
+    'reddit_message_id',
+    'ethereum_transaction_id',
+    'ethereum_signed_withdrawal'
 );
 
 
-ALTER TYPE public.event_type OWNER TO pod_admin;
+ALTER TYPE public.withdrawal_receipt_type OWNER TO pod_admin;
+
+--
+-- Name: withdrawal_receipt; Type: TYPE; Schema: public; Owner: pod_admin
+--
+
+CREATE TYPE public.withdrawal_receipt AS (
+	type public.withdrawal_receipt_type,
+	value text
+);
+
+
+ALTER TYPE public.withdrawal_receipt OWNER TO pod_admin;
+
+--
+-- Name: withdrawal_type; Type: TYPE; Schema: public; Owner: pod_admin
+--
+
+CREATE TYPE public.withdrawal_type AS ENUM (
+    'reddit',
+    'ethereum'
+);
+
+
+ALTER TYPE public.withdrawal_type OWNER TO pod_admin;
 
 --
 -- Name: add_inbound_delivery(text, text, text, integer, timestamp with time zone); Type: FUNCTION; Schema: public; Owner: pod_admin
@@ -291,6 +311,23 @@ END; $$;
 ALTER FUNCTION public.deposit_erc20(_asset_id integer, _block integer, _transaction public.citext, _from_address public.citext, _to_deposit_id public.citext, _amount integer) OWNER TO pod_admin;
 
 --
+-- Name: generate_public_id(); Type: FUNCTION; Schema: public; Owner: pod_admin
+--
+
+CREATE FUNCTION public.generate_public_id() RETURNS public.citext
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  -- Public IDs look like Ethereum addresses so that they can be used on chain
+  -- with the `address` type when needed.
+  RETURN '0x00000000'::text
+      || replace((public.uuid_generate_v4())::text, '-'::text, ''::text);
+END; $$;
+
+
+ALTER FUNCTION public.generate_public_id() OWNER TO pod_admin;
+
+--
 -- Name: get_available_erc20_withdrawals(integer); Type: FUNCTION; Schema: public; Owner: pod_admin
 --
 
@@ -461,10 +498,10 @@ END; $$;
 ALTER FUNCTION public.update_last_modified_column() OWNER TO pod_admin;
 
 --
--- Name: withdraw(integer, public.account, integer, integer); Type: FUNCTION; Schema: public; Owner: pod_admin
+-- Name: withdraw(integer, public.withdrawal_type, text, integer, integer); Type: FUNCTION; Schema: public; Owner: pod_admin
 --
 
-CREATE FUNCTION public.withdraw(_from_user_id integer, _to public.account, _asset_id integer, _amount integer) RETURNS integer
+CREATE FUNCTION public.withdraw(_from_user_id integer, _type public.withdrawal_type, _username text, _asset_id integer, _amount integer) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -472,31 +509,38 @@ DECLARE
   _new_balance int;
   _withdrawal_id int;
   _available_withdrawals int;
+  _recipient account;
 BEGIN
   LOCK users IN ROW EXCLUSIVE MODE;
   LOCK balances IN ROW EXCLUSIVE MODE;
 
-  IF _to.type = 'reddit_user' THEN
+  IF _type = 'reddit' THEN
     IF NOT EXISTS (
         SELECT 1 FROM reddit_accounts
             WHERE user_id = _from_user_id
-                AND username = _to.value
+                AND username = _username
             LIMIT 1) THEN
       RAISE EXCEPTION 'Cannot withdraw to unlinked Reddit account.';
     END IF;
 
+    _recipient := ('reddit_user', _username);
     UPDATE balances
         SET deposit_limit = deposit_limit + _amount
         WHERE user_id = _from_user_id
             AND asset_id = _asset_id
             -- A -1 deposit limit indicates no limit.
             AND deposit_limit >= 0;
-  ELSIF _to.type = 'ethereum_address' THEN
+  ELSIF _type = 'ethereum' THEN
     SELECT get_available_erc20_withdrawals(_from_user_id)
         INTO _available_withdrawals;
     IF _available_withdrawals <= 0 THEN
       RAISE EXCEPTION '[1] Withdrawal limit reached.';
     END IF;
+
+    -- The recipient is unknown, so we set this to NULL.
+    _recipient := NULL;
+  ELSE
+    RAISE EXCEPTION 'Unexpected withdrawal type "%"', _type;
   END IF;
 
   -- There is a bit of a race condition between counting withdrawals above and
@@ -505,7 +549,7 @@ BEGIN
   -- ok. The performance hit we would take for locking the table isn't worth it
   -- in this case.
   INSERT INTO withdrawals (from_user_id, recipient, asset_id, amount)
-      VALUES (_from_user_id, _to, _asset_id, _amount)
+      VALUES (_from_user_id, _recipient, _asset_id, _amount)
       RETURNING id INTO _withdrawal_id;
 
   SELECT balance
@@ -526,7 +570,7 @@ BEGIN
 END; $$;
 
 
-ALTER FUNCTION public.withdraw(_from_user_id integer, _to public.account, _asset_id integer, _amount integer) OWNER TO pod_admin;
+ALTER FUNCTION public.withdraw(_from_user_id integer, _type public.withdrawal_type, _username text, _asset_id integer, _amount integer) OWNER TO pod_admin;
 
 SET default_tablespace = '';
 
@@ -566,8 +610,7 @@ CREATE TABLE public.assets (
     name_singular text NOT NULL,
     name_plural text NOT NULL,
     symbol text NOT NULL,
-    creation_time timestamp with time zone DEFAULT now() NOT NULL,
-    abi text NOT NULL
+    creation_time timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -682,7 +725,7 @@ ALTER SEQUENCE public.deliveries_id_seq OWNED BY public.deliveries.id;
 --
 
 CREATE TABLE public.erc20_deposit_ids (
-    deposit_id public.citext DEFAULT (('0x10'::text || public.get_random_string(6)) || replace((public.uuid_generate_v4())::text, '-'::text, ''::text)) NOT NULL,
+    deposit_id public.citext DEFAULT public.generate_public_id() NOT NULL,
     user_id integer NOT NULL
 );
 
@@ -734,7 +777,7 @@ ALTER SEQUENCE public.erc20_deposits_id_seq OWNED BY public.erc20_deposits.id;
 
 CREATE TABLE public.event_logs (
     id integer NOT NULL,
-    type public.event_type NOT NULL,
+    type text NOT NULL,
     data text NOT NULL,
     creation_time timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -998,7 +1041,7 @@ ALTER SEQUENCE public.user_terms_id_seq OWNED BY public.user_terms.id;
 CREATE TABLE public.users (
     id integer NOT NULL,
     creation_time timestamp with time zone DEFAULT now() NOT NULL,
-    public_id public.citext DEFAULT ('0x00000000'::text || replace((public.uuid_generate_v4())::text, '-'::text, ''::text)) NOT NULL,
+    public_id public.citext DEFAULT public.generate_public_id() NOT NULL,
     erc20_withdrawal_limit integer DEFAULT 10 NOT NULL,
     CONSTRAINT users_public_id_check CHECK (public.is_valid_public_id((public_id)::text))
 );
@@ -1049,10 +1092,13 @@ CREATE TABLE public.withdrawals (
     recipient public.account,
     asset_id integer NOT NULL,
     amount integer NOT NULL,
-    transaction_id text,
     creation_time timestamp with time zone DEFAULT now() NOT NULL,
     success boolean,
-    error text DEFAULT ''::text NOT NULL
+    error text DEFAULT ''::text NOT NULL,
+    public_id public.citext DEFAULT public.generate_public_id() NOT NULL,
+    receipt public.withdrawal_receipt,
+    needs_manual_review boolean DEFAULT true NOT NULL,
+    refunded boolean DEFAULT false NOT NULL
 );
 
 

@@ -126,6 +126,7 @@ function _request(
                   `Unknown response status (${response.statusCode}).`));
           }
         })
+      .on('error', reject)
       .end(data);
    });
 }

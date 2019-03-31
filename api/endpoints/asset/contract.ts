@@ -7,6 +7,7 @@ import {
 import {HttpMethod} from '../../../common/net/http_method';
 import {assetSymbolFromString} from '../../../common/types/Asset';
 import {GlazeDbClient} from '../../../glaze_db';
+import {abi} from '../../../token/BUIDL/output/Donut';
 import {requireUserId} from '../../user';
 
 export function routeAssetContract(
@@ -33,7 +34,6 @@ async function handleAssetContract(
     Promise<void> {
   const unused_userId = await requireUserId(req, glazeDb);
   const assetId = ensureSafeInteger(+ensurePropString(req.params, 'asset_id'));
-  const {abi} = await glazeDb.getAssetContractDetails(assetId);
   // TODO: Make this an argument passed to the endpoint?
   const chainId = 1;
   const address = getContractAddress(chainId, assetId);
