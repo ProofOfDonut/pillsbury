@@ -461,13 +461,23 @@ class AppData extends PureComponent<PropTypes, State> {
     if (!web3) {
       return '';
     }
-    const contract = await this.asyncGetAssetContract(web3, asset.id);
+    const [contract, address] = await Promise.all([
+      this.asyncGetAssetContract(web3, asset.id),
+      this.getDefaultWeb3Address(),
+    ]);
+    const decimals = await contract.methods.decimals().call();
     const response = await contract.methods.withdraw(
         signedWithdrawal.v,
         signedWithdrawal.r,
         signedWithdrawal.s,
         signedWithdrawal.nonce,
-        signedWithdrawal.amount);
+        signedWithdrawal.amount + '0'.repeat(decimals))
+      .send({
+        'from': address,
+        'to': contract.options.address,
+        'value': '0x0',
+        'gas': 100000, // TODO: What's a good gas limit to use for this?
+      });
     console.log(response); // DEBUG
     // ensureEqual(response, true);
     return ''; // TODO 

@@ -12,9 +12,12 @@ export async function signWithdrawalMessage(
   const contract = new web3.eth.Contract(
       tokenAbi,
       tokenAddress);
+  const decimals = await contract.methods.decimals().call();
   const message =
-      await contract.methods.getWithdrawalMessage(nonce, amount).call();
+      await contract.methods.getWithdrawalMessage(
+          nonce,
+          amount + '0'.repeat(decimals)).call();
   const ms =
-      await web3.eth.accounts.sign(message, privateKey.toString('hex'));
+      await web3.eth.accounts.sign(message, '0x' + privateKey.toString('hex'));
   return SignedWithdrawal.fromSignature(nonce, amount, ms.signature);
 }

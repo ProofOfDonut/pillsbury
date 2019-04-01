@@ -657,7 +657,7 @@ contract Donut is ERC20, ERC20Detailed, ERC20Mintable, ERC20Pausable {
       returns (bool) {
     require(!_usedWithdrawalNonces[nonce]);
     _usedWithdrawalNonces[nonce] = true;
-    bytes32 message = getWithdrawalMessage(nonce, value);
+    bytes32 message = getPrefixedWithdrawalMessageHash(nonce, value);
     address signer = ecrecover(message, v, r, s);
     require(signer != address(0));
     require(isMinter(signer));
@@ -672,7 +672,21 @@ contract Donut is ERC20, ERC20Detailed, ERC20Mintable, ERC20Pausable {
       public
       pure
       returns (bytes32) {
-    bytes memory prefix = '\x1aPillsbury Signed Message:\n';
-    return keccak256(abi.encodePacked(prefix, nonce, value));
+    return keccak256(abi.encodePacked(nonce, value));
+  }
+
+  function getPrefixedWithdrawalMessageHash(
+      address nonce,
+      uint256 value)
+      private
+      pure
+      returns (bytes32) {
+    bytes memory prefix = '\x19Ethereum Signed Message:\n32';
+    bytes32 message = getWithdrawalMessage(nonce, value);
+    return keccak256(abi.encodePacked(prefix, message));
+  }
+
+  function isWithdrawalNonceUsed(address nonce) public view returns (bool) {
+    return _usedWithdrawalNonces[nonce];
   }
 }
