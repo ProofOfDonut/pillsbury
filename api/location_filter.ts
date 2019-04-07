@@ -59,12 +59,15 @@ function createGeoFilter(
       return true;
     }
     userCountry = userCountry.toLowerCase();
-    if (userCountry == fCountry) {
+    if (userCountry != fCountry) {
+      return true;
+    }
+    if (!fRegion) {
       return false;
     }
     let userRegion = geoInfo['region'];
     if (!userRegion) {
-      return true;
+      return false;
     }
     userRegion = userRegion.toLowerCase();
     if (userRegion == fRegion) {

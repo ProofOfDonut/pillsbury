@@ -1,0 +1,5 @@
+#!/bin/bash
+set -e -o pipefail
+workspace=$(pwd)
+
+node_modules/typescript/bin/tsc $@ 

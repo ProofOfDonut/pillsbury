@@ -28,7 +28,7 @@ import {abi as TOKEN_ABI} from './contract_config';
 const API_BASE =
     process.env.NODE_ENV == 'production'
         ? 'https://api.donut.dance'
-        : 'http://192.168.56.102:3001';
+        : location.protocol + '//' + location.hostname + ':3001';
 
 // TODO: Can this type be imported from 'web3' somehow?
 type Contract = {

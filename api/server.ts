@@ -1,5 +1,6 @@
 import {json as parseBodyJson} from 'body-parser';
 import * as cookieParser from 'cookie-parser';
+import {createServer as createHttpsServer} from 'https';
 import * as express from 'express';
 import {Application, Request, Response} from 'express';
 import {
@@ -134,6 +135,15 @@ export class ApiServer {
     const secureCookies = ensurePropBoolean(config, 'secure-cookies');
     const rootAdmins =
         <string[]> ensurePropArrayOfType(config, 'root-admins', 'string');
+    const httpsConfigRaw = config['https'];
+    let httpsConfig = null;
+    if (httpsConfigRaw) {
+      const [cert, key] = await Promise.all([
+        readFile(ensurePropString(httpsConfigRaw, 'cert'), 'utf8'),
+        readFile(ensurePropString(httpsConfigRaw, 'key'), 'utf8')
+      ]);
+      httpsConfig = {cert, key};
+    }
     const redditLoginId = ensurePropString(redditLoginConfig, 'id');
     const redditLoginSecret = ensurePropString(redditLoginConfig, 'secret');
     const ethereumNodeHost = ensurePropString(ethereumNodeConfig, 'host');
@@ -220,7 +230,15 @@ export class ApiServer {
 
     app.use(filterConfigToExpressMiddleware(requestFilter));
 
-    app.listen(port, host, () => readyResolve({host, port}));
+    const serverReady = () => readyResolve({host, port});
+    if (httpsConfig) {
+      createHttpsServer({
+        cert: httpsConfig.cert,
+        key: httpsConfig.key,
+      }, app).listen(port, host, serverReady);
+    } else {
+      app.listen(port, host, serverReady);
+    }
 
     return app;
   }
