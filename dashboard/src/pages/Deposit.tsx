@@ -9,7 +9,7 @@ import RedditDepositInstructions from '../components/RedditDepositInstructions';
 type PropTypes = {
   depositTokens: ((asset: Asset, amount: number) => void)|null;
   asyncGetAssetBySymbol: (symbol: AssetSymbol) => Promise<Asset>;
-  getMetaMaskBalance: (assetId: number) => Promise<number|null>;
+  getWeb3ClientBalance: (assetId: number) => Promise<number|null>;
   getDepositId: () => Promise<string>;
   getContractAddress: () => Promise<string>;
   getRedditHub: () => string;
@@ -45,7 +45,7 @@ class DepositPage extends PureComponent<PropTypes, State> {
       <DepositTokens
           deposit={this.props.depositTokens}
           asyncGetAssetBySymbol={this.props.asyncGetAssetBySymbol}
-          getMetaMaskBalance={this.props.getMetaMaskBalance}
+          getWeb3ClientBalance={this.props.getWeb3ClientBalance}
           getDepositId={this.props.getDepositId}
           getContractAddress={this.props.getContractAddress} />
     );

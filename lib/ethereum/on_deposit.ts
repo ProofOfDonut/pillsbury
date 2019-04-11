@@ -1,6 +1,10 @@
 import Web3 from 'web3';
 import {
-  ensureEqual, ensurePropObject, ensurePropSafeInteger, ensurePropString,
+  ensureEqual,
+  ensurePropBigNumber,
+  ensurePropObject,
+  ensurePropSafeInteger,
+  ensurePropString,
 } from '../../common/ensure';
 
 export async function onDeposit(
@@ -12,7 +16,7 @@ export async function onDeposit(
         block: number,
         transaction: string,
         from: string,
-        accountId: string,
+        depositId: string,
         amount: number)
         => void) {
   const contract = new web3.eth.Contract(
@@ -29,12 +33,18 @@ export async function onDeposit(
     const transaction = ensurePropString(event, 'transactionHash');
     const info = ensurePropObject(event, 'returnValues');
     const from = ensurePropString(info, 'from');
-    const accountId = ensurePropString(info, 'accountId');
-    const value = ensurePropString(info, 'value');
-    if (value.slice(-decimals) == '0') {
+    const depositId = ensurePropString(info, 'depositId');
+    const value = ensurePropBigNumber(info, 'value');
+    const valueString = value.toString();
+    if (valueString.slice(-decimals) == '0') {
       return;
     }
-    ensureEqual(value.slice(-decimals), '0'.repeat(+decimals));
-    callback(block, transaction, from, accountId, +value.slice(0, -decimals));
+    ensureEqual(valueString.slice(-decimals), '0'.repeat(+decimals));
+    callback(
+        block,
+        transaction,
+        from,
+        depositId,
+        +valueString.slice(0, -decimals));
   });
 }

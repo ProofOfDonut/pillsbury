@@ -6,9 +6,9 @@ import React, {PureComponent, ReactNode} from 'react';
 import {ensure} from '../common/ensure';
 import {Asset, AssetSymbol} from '../common/types/Asset';
 import AmountControls from './AmountControls';
-import MetaMaskNotDetected from './MetaMaskNotDetected';
 import Module, {ModuleStatus} from './Module';
 import DepositTokensAdvanced from './DepositTokensAdvanced';
+import Web3ClientNotDetected from './Web3ClientNotDetected';
 
 const styles = (theme: Theme) => ({
   root: {
@@ -43,7 +43,7 @@ type PropTypes = {
   };
   deposit: ((asset: Asset, amount: number) => void)|null;
   asyncGetAssetBySymbol: (symbol: AssetSymbol) => Promise<Asset>;
-  getMetaMaskBalance: (assetId: number) => Promise<number|null>;
+  getWeb3ClientBalance: (assetId: number) => Promise<number|null>;
   getDepositId: () => Promise<string>;
   getContractAddress: () => Promise<string>;
 };
@@ -70,7 +70,7 @@ class DepositTokens extends PureComponent<PropTypes, State> {
         <Typography variant="h5">
           Deposit ERC-20 DONUTS
         </Typography>
-        <p>You can deposit donuts from your MetaMask account.</p>
+        <p>You can deposit donuts from your Web3 client.</p>
         {this.renderAmountControls()}
         <DepositTokensAdvanced
             getDepositId={this.props.getDepositId}
@@ -96,40 +96,40 @@ class DepositTokens extends PureComponent<PropTypes, State> {
           <AmountControls
               label="Deposit"
               action={this.deposit} />
-          {this.renderMetaMaskBalance()}
+          {this.renderWeb3ClientBalance()}
         </div>
       );
     }
-    return <MetaMaskNotDetected />
+    return <Web3ClientNotDetected />
   }
 
-  private renderMetaMaskBalance() {
+  private renderWeb3ClientBalance() {
     const classes = this.props.classes;
-    this.reloadMetaMaskBalance();
+    this.reloadWeb3ClientBalance();
     if (this.state.metaMaskBalance == -2) {
       return (
         <div>
-          Could not determine MetaMask balance. (Is it locked?)
+          Could not determine Web3 client balance. (Is it locked?)
         </div>
       );
     }
     if (this.state.metaMaskBalance == -1) {
       return (
         <div>
-          Loading MetaMask balance{'\u2026'}
+          Loading Web3 client balance{'\u2026'}
         </div>
       );
     }
     return (
       <div className={classes.metaMaskBalance}>
-        You have {this.state.metaMaskBalanceFormatted} in MetaMask.
+        You have {this.state.metaMaskBalanceFormatted} in your Web3 client.
       </div>
     );
   }
 
-  private async _reloadMetaMaskBalance() {
+  private async _reloadWeb3ClientBalance() {
     const asset = await this.props.asyncGetAssetBySymbol(AssetSymbol.DONUT);
-    const balance = await this.props.getMetaMaskBalance(asset.id);
+    const balance = await this.props.getWeb3ClientBalance(asset.id);
     if (balance == null) {
       this.setState({metaMaskBalance: -2});
     } else {
@@ -140,7 +140,8 @@ class DepositTokens extends PureComponent<PropTypes, State> {
     }
   }
 
-  private reloadMetaMaskBalance = throttle(this._reloadMetaMaskBalance, 300);
+  private reloadWeb3ClientBalance =
+      throttle(this._reloadWeb3ClientBalance, 300);
 
   private deposit = async (amount: number) => {
     const classes = this.props.classes;

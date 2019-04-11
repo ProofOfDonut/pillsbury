@@ -51,10 +51,7 @@ type State = {
   contractAddressByAssetId: ImmutableMap<number, string>;
   balances: ImmutableMap<string, Balances>;
   getPlatformBalances: (userId: string) => Balances|undefined;
-  availableErc20Withdrawals: number|undefined;
-  getAvailableErc20Withdrawals: () => number|undefined;
   histories: ImmutableMap<string, History>;
-  defaultWithdrawalAddress: string;
   redditClientId: string;
   redditRedirectUri: string;
   getRedditLoginConfig: () => [string, string]|undefined;
@@ -91,10 +88,7 @@ class AppData extends PureComponent<PropTypes, State> {
       contractAddressByAssetId: ImmutableMap<number, string>(),
       balances: ImmutableMap<string, Balances>(),
       getPlatformBalances: (userId: string) => this.getPlatformBalances(userId),
-      availableErc20Withdrawals: undefined,
-      getAvailableErc20Withdrawals: () => this.getAvailableErc20Withdrawals(),
       histories: ImmutableMap<string, History>(),
-      defaultWithdrawalAddress: '',
       redditClientId: '',
       redditRedirectUri: '',
       getRedditLoginConfig: () => this.getRedditLoginConfig(),
@@ -123,13 +117,8 @@ class AppData extends PureComponent<PropTypes, State> {
       this.setState({csrfToken}, resolve);
     });
     await this.updateUser();
-    let defaultWithdrawalAddress: string = '';
-    try {
-      defaultWithdrawalAddress = await this.getDefaultWeb3Address();
-    } catch (e) {}
     this.setState({
       initialized: true,
-      defaultWithdrawalAddress,
     });
   }
 
@@ -149,12 +138,10 @@ class AppData extends PureComponent<PropTypes, State> {
         asyncGetAssetBySymbol={this.asyncGetAssetBySymbol}
         getPlatformBalances={this.state.getPlatformBalances}
         refreshPlatformBalances={this.refreshPlatformBalances}
-        getMetaMaskBalance={this.getMetaMaskBalance}
+        getWeb3ClientBalance={this.getWeb3ClientBalance}
         histories={this.state.histories}
         depositTokens={this.getTokenDepositer()}
-        getAvailableErc20Withdrawals={this.state.getAvailableErc20Withdrawals}
         withdraw={this.withdraw}
-        defaultWithdrawalAddress={this.state.defaultWithdrawalAddress}
         getDepositId={() => this.asyncGetDepositId(ensure(this.state.user).id)}
         getContractAddress={this.tmpAsyncGetDonutContractAddress}
         getRedditLoginConfig={this.state.getRedditLoginConfig}
@@ -163,7 +150,8 @@ class AppData extends PureComponent<PropTypes, State> {
         unacceptedUserTerms={this.state.unacceptedUserTerms}
         acceptUserTerm={this.acceptUserTerm}
         getAllUserTerms={this.state.getAllUserTerms}
-        setUserTerms={this.setUserTerms} />;
+        setUserTerms={this.setUserTerms}
+        web3ClientDetected={!!this.web3} />;
   }
 
   private async getCsrfToken(): Promise<string> {
@@ -229,7 +217,7 @@ class AppData extends PureComponent<PropTypes, State> {
     };
   }
 
-  private getMetaMaskBalance =
+  private getWeb3ClientBalance =
       async (assetId: number):
       Promise<number|null> => {
     const web3 = this.web3;
@@ -245,7 +233,7 @@ class AppData extends PureComponent<PropTypes, State> {
         contract.methods.decimals().call(),
         contract.methods.balanceOf(address).call(),
       ]);
-      return +balance.slice(0, -decimals);
+      return +balance.toString().slice(0, -decimals);
     }
     return null;
   };
@@ -367,15 +355,15 @@ class AppData extends PureComponent<PropTypes, State> {
           this.asyncGetDepositId(ensure(this.state.user).id),
         ]);
         const decimals = await contract.methods.decimals().call();
-        const response =
-            await contract.methods.deposit(
+        await this.web3Send(
+            contract.methods.deposit(
                 depositId,
-                amount + '0'.repeat(+decimals))
-              .send({
-                'from': address,
-                'to': contract.options.address,
-                'gas': 70000, // TODO: What's a good gas limit to use for this?
-              });
+                amount + '0'.repeat(+decimals)),
+            {
+              'from': address,
+              'to': contract.options.address,
+              'gas': 70000, // TODO: What's a good gas limit to use for this?
+            });
         if (this.state.user) {
           this.loadBalances(this.state.user.id);
         }
@@ -393,30 +381,6 @@ class AppData extends PureComponent<PropTypes, State> {
   private async getDefaultWeb3Address(): Promise<string> {
     const addresses = await ensure(this.web3).eth.getAccounts();
     return addresses[0];
-  }
-
-  private getAvailableErc20Withdrawals(): number|undefined {
-    this.asyncGetAvailableErc20Withdrawals()
-      .then(available => {
-        if (available != this.state.availableErc20Withdrawals) {
-          this.setState({
-            availableErc20Withdrawals: available,
-            getAvailableErc20Withdrawals:
-                () => this.getAvailableErc20Withdrawals(),
-          });
-        }
-      });
-    return this.state.availableErc20Withdrawals;
-  }
-
-  private async asyncGetAvailableErc20Withdrawals(): Promise<number> {
-    if (!this.state.user) {
-      return 0;
-    }
-    const response = await this.apiRequest(
-        HttpMethod.GET,
-        `/user:${this.state.user.id}/available-erc20-withdrawals`);
-    return ensurePropSafeInteger(response, 'available');
   }
 
   private withdraw = async (
@@ -465,20 +429,18 @@ class AppData extends PureComponent<PropTypes, State> {
       this.getDefaultWeb3Address(),
     ]);
     const decimals = await contract.methods.decimals().call();
-    const response = await contract.methods.withdraw(
-        signedWithdrawal.v,
-        signedWithdrawal.r,
-        signedWithdrawal.s,
-        signedWithdrawal.nonce,
-        signedWithdrawal.amount + '0'.repeat(decimals))
-      .send({
-        'from': address,
-        'to': contract.options.address,
-        'gas': 100000, // TODO: What's a good gas limit to use for this?
-      });
-    console.log(response); // DEBUG
-    // ensureEqual(response, true);
-    return ''; // TODO 
+    return this.web3Send(
+        contract.methods.withdraw(
+            signedWithdrawal.v,
+            signedWithdrawal.r,
+            signedWithdrawal.s,
+            signedWithdrawal.nonce,
+            signedWithdrawal.amount + '0'.repeat(decimals)),
+        {
+          from: address,
+          to: contract.options.address,
+          gas: 100000, // TODO: What's a good gas limit to use for this?
+        });
   }
 
   private getRedditLoginConfig = (): [string, string]|undefined => {
@@ -617,21 +579,15 @@ class AppData extends PureComponent<PropTypes, State> {
   private get web3(): Web3|null {
     if (!this._web3) {
       let web3: Web3|null = null;
-      let ready: Promise<void>|null = null;
       const ethereum = (window as any)['ethereum'];
       if (ethereum) {
         web3 = new Web3(ethereum);
-        ready = ethereum.enable();
+        ethereum.enable();
       } else if (Web3.givenProvider) {
         web3 = new Web3(Web3.givenProvider);
       }
       if (web3) {
         this._web3 = web3;
-        if (ready) {
-          ready.then(() => this.updateDefaultWithdrawalAddress());
-        } else {
-          this.updateDefaultWithdrawalAddress();
-        }
       } else {
         return null;
       }
@@ -639,11 +595,23 @@ class AppData extends PureComponent<PropTypes, State> {
     return this._web3;
   }
 
-  private async updateDefaultWithdrawalAddress() {
-    try {
-      const defaultWithdrawalAddress = await this.getDefaultWeb3Address();
-      this.setState({defaultWithdrawalAddress});
-    } catch (e) {}
+  // This is being used to patch a bug (it seems to be a problem with Web3)
+  // where the promise returned by the `send` method never resolves.
+  private web3Send(
+      tx: any,
+      options: {from: string, to: string, gas: number}):
+      Promise<string> {
+    return new Promise(
+        (resolve: (tranactionHash: string) => void,
+         reject: (error: Error) => void) => {
+      tx.send(options, (error: Error, transactionHash: string) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(transactionHash);
+      });
+    });
   }
 
   private async getUnacceptedUserTerms(): Promise<UserTerm[]> {

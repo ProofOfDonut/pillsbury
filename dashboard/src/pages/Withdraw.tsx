@@ -14,11 +14,10 @@ import WithdrawTokens from '../components/WithdrawTokens';
 type PropTypes = {
   user: User;
   getAsset: (id: number) => Asset|undefined;
-  getAvailableErc20Withdrawals: () => number|undefined;
   withdraw: (withdrawal: Withdrawal) => Promise<any>;
-  defaultAddress: string;
   balances: Balances|undefined;
   refreshBalances: () => void;
+  web3ClientDetected: boolean;
 };
 type State = {
   selectedTab: AccountType;
@@ -69,19 +68,18 @@ class WithdrawPage extends PureComponent<PropTypes, State> {
     const balance =
         ensureSafeInteger(
             ensure(this.props.balances).getPlatformValue(assetId));
-    const availableErc20Withdrawals = this.props.getAvailableErc20Withdrawals();
-    if (!asset || availableErc20Withdrawals == undefined) {
+    if (!asset) {
       return <CircularProgress />;
     }
+    const withdraw = this.props.web3ClientDetected
+        ? (amount: number) => this.withdrawErc20(asset, amount)
+        : null;
     return (
       <WithdrawTokens
           asset={asset}
           balance={balance}
           refreshBalances={this.props.refreshBalances}
-          availableErc20Withdrawals={availableErc20Withdrawals}
-          withdraw={(address: string, amount: number) =>
-              this.withdrawToEthereumAddress(asset, address, amount)}
-          defaultAddress={this.props.defaultAddress} />
+          withdraw={withdraw} />
     );
   };
 
@@ -103,9 +101,8 @@ class WithdrawPage extends PureComponent<PropTypes, State> {
     );
   };
 
-  private withdrawToEthereumAddress = (
+  private withdrawErc20 = (
       asset: Asset,
-      address: string,
       amount: number):
       Promise<Withdrawal> => {
     return this.withdrawTo(

@@ -24,15 +24,15 @@ type PropTypes = {
   };
 };
 type State = {};
-class MetaMaskNotDetected extends PureComponent<PropTypes, State> {
+class Web3NotDetected extends PureComponent<PropTypes, State> {
   render() {
     const classes = this.props.classes;
     return (
       <div className={classes.root}>
-        <ErrorIcon className={classes.errorIcon} /> MetaMask not detected.
+        <ErrorIcon className={classes.errorIcon} /> Web3 client not detected.
       </div>
     );
   }
 }
 
-export default withStyles(styles, {withTheme: true})(MetaMaskNotDetected);
+export default withStyles(styles, {withTheme: true})(Web3NotDetected);

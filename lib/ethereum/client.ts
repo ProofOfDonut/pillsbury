@@ -80,7 +80,7 @@ export class EthereumClient {
           block: number,
           transaction: string,
           from: string,
-          accountId: string,
+          depositId: string,
           amount: number)
           => void) {
     _onDeposit(this.web3, tokenAddress, tokenAbi, fromBlock, callback);

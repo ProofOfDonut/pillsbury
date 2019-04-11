@@ -143,6 +143,18 @@ export function ensurePropSafeInteger(
       message || undefined);
 }
 
+export function ensurePropBigNumber(
+    obj: Object,
+    key: string,
+    message: string = ''):
+    // TODO: What is the correct return type?
+    any {
+  const value = ensurePropType(obj, key, 'object', message);
+  // TODO: How can we check to make sure the value is a actually a `BigNumber`
+  // beyond just making sure it's an object?
+  return value;
+}
+
 export function ensurePropString(
     obj: Object,
     key: string,

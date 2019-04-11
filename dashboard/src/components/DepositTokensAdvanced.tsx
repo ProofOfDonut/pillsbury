@@ -60,7 +60,7 @@ class DepositTokensAdvanced extends PureComponent<PropTypes, State> {
           {this.renderEnable()}
         </div>
         <div className={classes.advancedInstructions}>
-          You can use this if you don't have access to a Web3 browser like
+          You can use this if you don't have access to a Web3 client like
           MetaMask. This deposit method is for advanced users who know what
           they're doing.
         </div>

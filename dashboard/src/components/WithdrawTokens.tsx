@@ -1,13 +1,14 @@
 import Typography from '@material-ui/core/Typography';
 import {Theme, withStyles} from '@material-ui/core/styles';
 import React, {PureComponent} from 'react';
+import {ensure} from '../common/ensure';
 import {Asset} from '../common/types/Asset';
 import {Withdrawal} from '../common/types/Withdrawal';
 import AddressLink from './AddressLink';
 import AmountControls from './AmountControls';
-import Erc20WithdrawalAddress from './Erc20WithdrawalAddress';
 import Module, {ModuleStatus} from './Module';
 import RefreshButton from './RefreshButton';
+import Web3ClientNotDetected from './Web3ClientNotDetected';
 
 const styles = (theme: Theme) => ({
   root: {
@@ -35,29 +36,17 @@ type PropTypes = {
   asset: Asset;
   balance: number;
   refreshBalances: () => void;
-  availableErc20Withdrawals: number;
-  withdraw: (address: string, amount: number) => Promise<Withdrawal>;
-  defaultAddress: string;
+  withdraw: ((amount: number) => Promise<Withdrawal>)|null;
 };
 type State = {
-  address: string;
   moduleStatus: ModuleStatus|null;
 };
 class WithdrawTokens extends PureComponent<PropTypes, State> {
   constructor(props: PropTypes) {
     super(props);
     this.state = {
-      address: props.defaultAddress,
       moduleStatus: null,
     };
-  }
-
-  componentWillReceiveProps(props: PropTypes) {
-    if (this.state.address == '' && props.defaultAddress != '') {
-      this.setState({
-        address: props.defaultAddress,
-      });
-    }
   }
 
   render() {
@@ -69,16 +58,13 @@ class WithdrawTokens extends PureComponent<PropTypes, State> {
           Withdraw as ERC-20 DONUTS
         </Typography>
         <p>
-          Enter your Ethereum address and the amount of DONUTS to withdraw.
+          Enter the amount of DONUTS to withdraw to your Ethereum address.
         </p>
-        <div>
-          <Erc20WithdrawalAddress
-              value={this.state.address}
-              setValue={this.setAddress} />
-        </div>
-        <AmountControls
-            label="Withdraw"
-            action={this.withdrawAmount} />
+        <p>
+          <b>Note:</b> You will need a little ETH to pay the gas costs to
+          complete the transaction.
+        </p>
+        {this.renderAmountControls()}
         <div className={classes.accountInfo}>
           <div>
             {'Account balance: '}
@@ -88,18 +74,21 @@ class WithdrawTokens extends PureComponent<PropTypes, State> {
                 tiny={true}
                 refreshBalances={this.props.refreshBalances} />
           </div>
-          <div>
-            {'Withdrawals remaining: '}
-            <b>{this.props.availableErc20Withdrawals}</b>
-          </div>
         </div>
       </Module>
     );
   }
 
-  private setAddress = (address: string) => {
-    this.setState({address});
-  };
+  private renderAmountControls() {
+    if (this.props.withdraw) {
+      return (
+        <AmountControls
+            label="Withdraw"
+            action={this.withdrawAmount} />
+      );
+    }
+    return <Web3ClientNotDetected />;
+  }
 
   private withdrawAmount = async (amount: number) => {
     await new Promise(resolve => {
@@ -107,7 +96,7 @@ class WithdrawTokens extends PureComponent<PropTypes, State> {
         moduleStatus: new ModuleStatus(true, 'Withdrawing...'),
       }, resolve);
     });
-    const withdrawal = await this.props.withdraw(this.state.address, amount);
+    const withdrawal = await ensure(this.props.withdraw)(amount);
     this.setState({
       moduleStatus: new ModuleStatus(
           false,
@@ -116,6 +105,7 @@ class WithdrawTokens extends PureComponent<PropTypes, State> {
               Your have successfully withdrawn{' '}
               {withdrawal.asset.name.format(withdrawal.amount)}.
             </p>
+            {this.renderTransactionLink(withdrawal)}
           </div>)),
     });
   }

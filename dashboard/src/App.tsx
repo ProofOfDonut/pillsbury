@@ -54,12 +54,10 @@ type PropTypes = {
   asyncGetAssetBySymbol: (symbol: AssetSymbol) => Promise<Asset>;
   getPlatformBalances: (userId: string) => Balances|undefined;
   refreshPlatformBalances: (userId: string) => void;
-  getMetaMaskBalance: (assetId: number) => Promise<number|null>;
+  getWeb3ClientBalance: (assetId: number) => Promise<number|null>;
   histories: Map<string, History>;
   depositTokens: ((asset: Asset, amount: number) => void)|null;
-  getAvailableErc20Withdrawals: () => number|undefined;
   withdraw: (withdawal: Withdrawal) => Promise<Withdrawal>;
-  defaultWithdrawalAddress: string;
   getDepositId: () => Promise<string>;
   getContractAddress: () => Promise<string>;
   getRedditLoginConfig: () => [string, string]|undefined;
@@ -69,6 +67,7 @@ type PropTypes = {
   acceptUserTerm: (termId: number) => void;
   getAllUserTerms: () => UserTerm[];
   setUserTerms: (userTerms: UserTerm[]) => Promise<void>;
+  web3ClientDetected: boolean;
 };
 type State = {};
 class App extends PureComponent<PropTypes, State> {
@@ -203,7 +202,7 @@ class App extends PureComponent<PropTypes, State> {
       <DepositPage
           depositTokens={this.props.depositTokens}
           asyncGetAssetBySymbol={this.props.asyncGetAssetBySymbol}
-          getMetaMaskBalance={this.props.getMetaMaskBalance}
+          getWeb3ClientBalance={this.props.getWeb3ClientBalance}
           getDepositId={this.props.getDepositId}
           getContractAddress={this.props.getContractAddress}
           getRedditHub={this.props.getRedditHub}
@@ -218,11 +217,10 @@ class App extends PureComponent<PropTypes, State> {
       <WithdrawPage
           user={user}
           getAsset={this.props.getAsset}
-          getAvailableErc20Withdrawals={this.props.getAvailableErc20Withdrawals}
           withdraw={this.props.withdraw}
-          defaultAddress={this.props.defaultWithdrawalAddress}
           balances={balances}
-          refreshBalances={this.refreshPlatformBalances} />
+          refreshBalances={this.refreshPlatformBalances}
+          web3ClientDetected={this.props.web3ClientDetected} />
     );
   };
 
