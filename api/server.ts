@@ -1,7 +1,7 @@
 import {json as parseBodyJson} from 'body-parser';
-import * as cookieParser from 'cookie-parser';
+import cookieParser from 'cookie-parser';
 import {createServer as createHttpsServer} from 'https';
-import * as express from 'express';
+import express from 'express';
 import {Application, Request, Response} from 'express';
 import {
   GetContractAddress, readContractConfig,

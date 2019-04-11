@@ -1,6 +1,6 @@
 import {exec} from 'child_process';
 import {join} from 'path';
-import * as puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer';
 import {Browser, ElementHandle, Page} from 'puppeteer';
 import {
   ensure, ensureEqual, ensurePropString, ensureSafeInteger, ensureString,

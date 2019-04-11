@@ -1,4 +1,4 @@
-import * as minimist from 'minimist';
+import minimist from 'minimist';
 import {join} from 'path';
 import {ensurePropString} from '../common/ensure';
 import {parseHostAndPort} from '../common/strings/host_and_port';

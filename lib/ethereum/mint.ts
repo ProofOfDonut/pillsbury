@@ -1,5 +1,5 @@
-import * as Transaction from 'ethereumjs-tx';
-import Web3 = require('web3');
+import Transaction from 'ethereumjs-tx';
+import Web3 from 'web3';
 import {request} from '../../common/net/request';
 import {Asset} from '../../common/types/Asset';
 import {QueuedTransaction} from '../../common/types/QueuedTransaction';

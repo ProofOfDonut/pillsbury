@@ -25,7 +25,7 @@
     "@types/lodash.throttle": "^4.1.4",
     "@types/minimist": "^1.2.0",
     "@types/node": "^10.12.12",
-    "@types/puppeteer": "^1.11.1",
+    "@types/puppeteer": "1.12.3",
     "@types/react": "16.7.13",
     "@types/react-dom": "16.0.11",
     "@types/react-router-dom": "^4.3.1",
@@ -42,16 +42,16 @@
     "minimist": "^1.2.0",
     "openzeppelin-solidity": "2.2.0",
     "pg-promise": "^8.5.3",
-    "puppeteer": "^1.11.0",
+    "puppeteer": "1.14.0",
     "react": "^16.6.3",
     "react-dom": "^16.6.3",
     "react-router-dom": "^4.4.0-beta.6",
-    "react-scripts": "^2.1.2",
+    "react-scripts": "2.1.8",
     "truffle": "5.0.8",
     "truffle-flattener": "^1.2.10",
     "typescript": "3.4.1",
     "serve": "10.1.1",
-    "web3": "1.0.0-beta.37"
+    "web3": "1.0.0-beta.52"
   },
   "browserslist": [
     ">0.2%",

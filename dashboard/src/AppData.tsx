@@ -374,7 +374,6 @@ class AppData extends PureComponent<PropTypes, State> {
               .send({
                 'from': address,
                 'to': contract.options.address,
-                'value': '0x0',
                 'gas': 70000, // TODO: What's a good gas limit to use for this?
               });
         if (this.state.user) {
@@ -475,7 +474,6 @@ class AppData extends PureComponent<PropTypes, State> {
       .send({
         'from': address,
         'to': contract.options.address,
-        'value': '0x0',
         'gas': 100000, // TODO: What's a good gas limit to use for this?
       });
     console.log(response); // DEBUG

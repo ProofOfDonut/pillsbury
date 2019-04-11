@@ -1,4 +1,4 @@
-import * as minimist from 'minimist';
+import minimist from 'minimist';
 import {join} from 'path';
 import {readContractConfig} from '../common/configs/contracts';
 import {ensure, ensurePropString} from '../common/ensure';

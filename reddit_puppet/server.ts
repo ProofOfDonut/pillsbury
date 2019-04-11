@@ -1,5 +1,5 @@
 import {json as parseBodyJson} from 'body-parser';
-import * as express from 'express';
+import express from 'express';
 import {Application, Request, Response} from 'express';
 import {
   ensure,

@@ -1,4 +1,4 @@
-import * as minimist from 'minimist';
+import minimist from 'minimist';
 import {sleep} from  '../common/async/sleep';
 import {
   ensurePropNumber, ensurePropObject, ensurePropString,

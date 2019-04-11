@@ -5,7 +5,7 @@ bin/veil -u
 bin/veil 'mkdir -p dashboard/src/common'
 bin/veil "rsync -ua --exclude '*.js' 'common/.' 'dashboard/src/common'"
 bin/veil 'cp token/BUIDL/output/Donut.ts dashboard/src/contract_config.ts'
-bin/veil 'tsc'
+bin/veil 'bin/tsc'
 export HOST=0.0.0.0
 export SKIP_PREFLIGHT_CHECK=true
 export HTTPS=true

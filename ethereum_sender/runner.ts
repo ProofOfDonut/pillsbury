@@ -1,4 +1,4 @@
-import * as minimist from 'minimist';
+import minimist from 'minimist';
 import {join} from 'path';
 import {ensurePropString} from '../common/ensure';
 import {GlazeDbClient, createGlazeDbClientFromConfigFiles} from '../glaze_db';

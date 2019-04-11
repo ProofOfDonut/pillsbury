@@ -1,4 +1,4 @@
-import * as minimist from 'minimist';
+import minimist from 'minimist';
 import {
   ensurePropObject, ensurePropSafeInteger, ensurePropString,
 } from '../common/ensure';

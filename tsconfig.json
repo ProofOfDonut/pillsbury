@@ -3,7 +3,9 @@
     "lib": ["es2017"],
     "target": "es2017",
     "module": "CommonJS",
-    "types" : ["node"]
+    "types" : ["node"],
+    "esModuleInterop": true,
+    "skipLibCheck": true
   },
   "include": ["**/*"],
   "exclude": ["dashboard"]

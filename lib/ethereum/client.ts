@@ -1,5 +1,5 @@
 import {fromV3} from 'ethereumjs-wallet';
-import Web3 = require('web3');
+import Web3 from 'web3';
 import {ensure, ensurePropString} from '../../common/ensure';
 import {QueuedTransaction} from '../../common/types/QueuedTransaction';
 import {SignedWithdrawal} from '../../common/types/SignedWithdrawal';

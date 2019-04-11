@@ -3,7 +3,7 @@ set -e -o pipefail
 workspace=$(pwd)
 
 cd "$workspace"
-bin/veil -u tsc
+bin/veil -u bin/tsc
 bin/veil "glaze_db/dev_manager.sh upgrade -y"
 db_name=$(bin/veil glaze_db/dev_manager.sh database_name)
 bin/veil "node reddit_delivery_monitor/runner \
