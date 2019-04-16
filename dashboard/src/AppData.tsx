@@ -1,6 +1,7 @@
 import {List, Map as ImmutableMap} from 'immutable';
 import React, {PureComponent} from 'react';
 import Web3 from 'web3';
+import {Contract, EventData} from 'web3-eth-contract';
 import App from './App';
 import {
   ensure,
@@ -30,12 +31,6 @@ const API_BASE =
     process.env.NODE_ENV == 'production'
         ? 'https://api.donut.dance'
         : location.protocol + '//' + location.hostname + ':3001';
-
-// TODO: Can this type be imported from 'web3' somehow?
-type Contract = {
-  options: {address: string};
-  methods: any;
-};
 
 type State = {
   initialized: boolean;
@@ -111,10 +106,10 @@ class AppData extends PureComponent<PropTypes, State> {
       allUserTerms: null,
       getAllUserTerms: () => this.getAllUserTerms(),
     };
-    this.initialize();
+    this.initializeUser();
   }
 
-  private async initialize() {
+  private async initializeUser() {
     let csrfToken: string = '';
     try {
       csrfToken = await this.getCsrfToken();
@@ -467,6 +462,7 @@ class AppData extends PureComponent<PropTypes, State> {
       this.getDefaultWeb3Address(),
     ]);
     const decimals = await contract.methods.decimals().call();
+    this.listenForWithdrawals(contract, signedWithdrawal.nonce);
     return this.web3Send(
         contract.methods.withdraw(
             signedWithdrawal.v,
@@ -480,6 +476,17 @@ class AppData extends PureComponent<PropTypes, State> {
           gas: 100000, // TODO: What's a good gas limit to use for this?
         });
   };
+
+  private listenForWithdrawals(contract: Contract, nonce: string) {
+    contract.once(
+        'Withdraw',
+        {filter: {'nonce': nonce}},
+        (error: Error, event: EventData) => {
+      if (!error) {
+        this.setUsedSignedWithdrawalNonce(nonce, true);
+      }
+    });
+  }
 
   private getPendingSignedWithdrawals(): SignedWithdrawal[]|undefined {
     const withdrawals = this.state.getSignedWithdrawals();
@@ -530,14 +537,26 @@ class AppData extends PureComponent<PropTypes, State> {
             `Could not determine if withdrawal nonce "${nonce}" has been used `
             + `for contract "${contractAddress}".`);
       }
-      await new Promise(resolve => this.setState({
-        usedSignedWithdrawalNonces:
-            this.state.usedSignedWithdrawalNonces.set(nonce, used),
-        getPendingSignedWithdrawals: () => this.getPendingSignedWithdrawals(),
-      }, resolve));
+      await this.setUsedSignedWithdrawalNonce(nonce, used);
     } finally {
       this.loadingUsedSignedWithdrawalNonces.delete(nonce);
     }
+  }
+
+  private setUsedSignedWithdrawalNonce(
+      nonce: string,
+      used: boolean):
+      Promise<void> {
+    return this.setUsedSignedWithdrawalNonces(
+        this.state.usedSignedWithdrawalNonces.set(nonce, used));
+  }
+
+  private async setUsedSignedWithdrawalNonces(
+      usedSignedWithdrawalNonces: ImmutableMap<string, boolean>) {
+    await new Promise(resolve => this.setState({
+      usedSignedWithdrawalNonces,
+      getPendingSignedWithdrawals: () => this.getPendingSignedWithdrawals(),
+    }, resolve));
   }
 
   private async asyncIsSignedWithdrawalNonceUsed(

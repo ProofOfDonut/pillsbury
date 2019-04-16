@@ -13,11 +13,12 @@ contract Donut is ERC20, ERC20Detailed, ERC20Mintable, ERC20Pausable {
 
   event Deposit(
       address from,
-      address depositId,
+      address indexed depositId,
       uint256 value);
 
   event Withdraw(
       address to,
+      address indexed nonce,
       uint256 value);
 
   constructor()
@@ -83,7 +84,7 @@ contract Donut is ERC20, ERC20Detailed, ERC20Mintable, ERC20Pausable {
     require(signer != address(0));
     require(isMinter(signer));
     _mint(to, value);
-    emit Withdraw(to, value);
+    emit Withdraw(to, nonce, value);
     return true;
   }
 
