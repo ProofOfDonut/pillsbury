@@ -9,6 +9,7 @@ import {ensure} from './common/ensure';
 import {Asset, AssetName, AssetSymbol} from './common/types/Asset';
 import {Balances} from './common/types/Balances';
 import {History} from './common/types/History';
+import {SignedWithdrawal} from './common/types/SignedWithdrawal';
 import {User} from './common/types/User';
 import {UserPermission} from './common/types/UserPermission';
 import {UserTerm} from './common/types/UserTerm';
@@ -53,6 +54,9 @@ type PropTypes = {
   getAssetBySymbol: (symbol: AssetSymbol) => Asset|undefined;
   asyncGetAssetBySymbol: (symbol: AssetSymbol) => Promise<Asset>;
   getPlatformBalances: (userId: string) => Balances|undefined;
+  getSignedWithdrawals: () => SignedWithdrawal[]|undefined;
+  getPendingSignedWithdrawals: () => SignedWithdrawal[]|undefined;
+  executeSignedWithdrawal: ((w: SignedWithdrawal) => void)|null;
   refreshPlatformBalances: (userId: string) => void;
   getWeb3ClientBalance: (assetId: number) => Promise<number|null>;
   histories: Map<string, History>;
@@ -220,6 +224,8 @@ class App extends PureComponent<PropTypes, State> {
           withdraw={this.props.withdraw}
           balances={balances}
           refreshBalances={this.refreshPlatformBalances}
+          getPendingSignedWithdrawals={this.props.getPendingSignedWithdrawals}
+          executeSignedWithdrawal={this.props.executeSignedWithdrawal}
           web3ClientDetected={this.props.web3ClientDetected} />
     );
   };

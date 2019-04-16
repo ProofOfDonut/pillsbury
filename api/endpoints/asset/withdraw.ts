@@ -194,6 +194,7 @@ async function signWithdrawal(
   signedWithdrawal = await ethereumClient.signWithdrawalMessage(
       address,
       abi,
+      assetId,
       nonce,
       amount);
   // This needs to be the last thing that's done in this function which could

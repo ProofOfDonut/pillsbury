@@ -93,6 +93,7 @@ export class EthereumClient {
   signWithdrawalMessage(
       tokenAddress: string,
       tokenAbi: any,
+      assetId: number,
       nonce: string,
       amount: number):
       Promise<SignedWithdrawal> {
@@ -101,6 +102,7 @@ export class EthereumClient {
         tokenAddress,
         tokenAbi,
         this.privateKey,
+        assetId,
         nonce,
         amount);
   }

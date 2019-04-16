@@ -6,6 +6,7 @@ export async function signWithdrawalMessage(
     tokenAddress: string,
     tokenAbi: any,
     privateKey: Buffer,
+    assetId: number,
     nonce: string,
     amount: number):
     Promise<SignedWithdrawal> {
@@ -19,5 +20,5 @@ export async function signWithdrawalMessage(
           amount + '0'.repeat(decimals)).call();
   const ms =
       await web3.eth.accounts.sign(message, '0x' + privateKey.toString('hex'));
-  return SignedWithdrawal.fromSignature(nonce, amount, ms.signature);
+  return SignedWithdrawal.fromSignature(assetId, nonce, amount, ms.signature);
 }

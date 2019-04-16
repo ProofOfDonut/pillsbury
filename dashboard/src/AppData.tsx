@@ -4,6 +4,7 @@ import Web3 from 'web3';
 import App from './App';
 import {
   ensure,
+  ensureArray,
   ensureEqual,
   ensureInEnum,
   ensureObject,
@@ -51,6 +52,10 @@ type State = {
   contractAddressByAssetId: ImmutableMap<number, string>;
   balances: ImmutableMap<string, Balances>;
   getPlatformBalances: (userId: string) => Balances|undefined;
+  signedWithdrawals: SignedWithdrawal[]|null;
+  getSignedWithdrawals: () => SignedWithdrawal[]|undefined;
+  usedSignedWithdrawalNonces: ImmutableMap<string, boolean>;
+  getPendingSignedWithdrawals: () => SignedWithdrawal[]|undefined;
   histories: ImmutableMap<string, History>;
   redditClientId: string;
   redditRedirectUri: string;
@@ -68,6 +73,8 @@ class AppData extends PureComponent<PropTypes, State> {
   private _web3: Web3|null = null;
   private ongoingGetRequests =
       new Map<string, Promise<{response: Response, data: Object}>>();
+  private loadingContractAddressByAssetId = new Map<number, Promise<string>>();
+  private loadingUsedSignedWithdrawalNonces = new Set<string>();
 
   state: State;
 
@@ -88,6 +95,10 @@ class AppData extends PureComponent<PropTypes, State> {
       contractAddressByAssetId: ImmutableMap<number, string>(),
       balances: ImmutableMap<string, Balances>(),
       getPlatformBalances: (userId: string) => this.getPlatformBalances(userId),
+      signedWithdrawals: null,
+      getSignedWithdrawals: () => this.getSignedWithdrawals(),
+      usedSignedWithdrawalNonces: ImmutableMap<string, boolean>(),
+      getPendingSignedWithdrawals: () => this.getPendingSignedWithdrawals(),
       histories: ImmutableMap<string, History>(),
       redditClientId: '',
       redditRedirectUri: '',
@@ -108,21 +119,22 @@ class AppData extends PureComponent<PropTypes, State> {
     try {
       csrfToken = await this.getCsrfToken();
     } catch (err) {
-      this.setState({
+      await new Promise(resolve => this.setState({
         apiAvailable: false,
-      });
+      }, resolve));
       return;
     }
-    await new Promise(resolve => {
-      this.setState({csrfToken}, resolve);
-    });
+    await new Promise(resolve => this.setState({
+      csrfToken,
+    }, resolve));
     await this.updateUser();
-    this.setState({
+    await new Promise(resolve => this.setState({
       initialized: true,
-    });
+    }, resolve));
   }
 
   render() {
+    const hasWeb3 = !!this.web3;
     return <App
         initialized={this.state.initialized}
         error={this.state.error}
@@ -142,6 +154,9 @@ class AppData extends PureComponent<PropTypes, State> {
         histories={this.state.histories}
         depositTokens={this.getTokenDepositer()}
         withdraw={this.withdraw}
+        getSignedWithdrawals={this.state.getSignedWithdrawals}
+        getPendingSignedWithdrawals={this.state.getPendingSignedWithdrawals}
+        executeSignedWithdrawal={hasWeb3 ? this.executeSignedWithdrawal : null}
         getDepositId={() => this.asyncGetDepositId(ensure(this.state.user).id)}
         getContractAddress={this.tmpAsyncGetDonutContractAddress}
         getRedditLoginConfig={this.state.getRedditLoginConfig}
@@ -151,7 +166,7 @@ class AppData extends PureComponent<PropTypes, State> {
         acceptUserTerm={this.acceptUserTerm}
         getAllUserTerms={this.state.getAllUserTerms}
         setUserTerms={this.setUserTerms}
-        web3ClientDetected={!!this.web3} />;
+        web3ClientDetected={hasWeb3} />;
   }
 
   private async getCsrfToken(): Promise<string> {
@@ -243,12 +258,12 @@ class AppData extends PureComponent<PropTypes, State> {
         await this.apiRequest(HttpMethod.GET, `/user:${userId}/balances`);
     ensure(typeof (response as any)['balances'] == 'object');
     const info = (response as any)['balances'] as Object|null;
-    this.setState({
+    await new Promise(resolve => this.setState({
       balances: this.state.balances.set(
           userId,
           info ? Balances.fromJSON(info) : Balances.empty),
       getPlatformBalances: (userId: string) => this.getPlatformBalances(userId),
-    });
+    }, resolve));
   }
 
   private getAsset = (id: number): Asset|undefined => {
@@ -314,7 +329,15 @@ class AppData extends PureComponent<PropTypes, State> {
     return this.asyncGetAssetContractAddress(asset.id);
   };
 
-  private async asyncGetAssetContractAddress(assetId: number): Promise<string> {
+  private getAssetContractAddress(assetId: number): string|undefined {
+    if (!this.state.contractAddressByAssetId.has(assetId)) {
+      this.loadAssetContractAddress(assetId);
+      return undefined;
+    }
+    return ensure(this.state.contractAddressByAssetId.get(assetId));
+  }
+
+  private asyncGetAssetContractAddress(assetId: number): Promise<string> {
     if (!this.state.contractAddressByAssetId.has(assetId)) {
       return this.loadAssetContractAddress(assetId);
     }
@@ -330,13 +353,30 @@ class AppData extends PureComponent<PropTypes, State> {
   }
 
   private async loadAssetContractAddress(assetId: number): Promise<string> {
+    // If we are already loading this information, skip doing it again.
+    let promise = this.loadingContractAddressByAssetId.get(assetId);
+    if (!promise) {
+      promise = this.loadAssetContractAddressInner(assetId);
+      this.loadingContractAddressByAssetId.set(assetId, promise);
+    }
+    try {
+      return await promise;
+    } finally {
+      this.loadingContractAddressByAssetId.delete(assetId);
+    }
+  }
+
+  private async loadAssetContractAddressInner(
+      assetId: number):
+      Promise<string> {
     const response = ensureObject(
         await this.apiRequest(HttpMethod.GET, `/asset:${assetId}/contract`));
     const address = ensurePropString(ensureObject(response), 'address');
-    this.setState({
+    await new Promise(resolve => this.setState({
       contractAddressByAssetId:
           this.state.contractAddressByAssetId.set(assetId, address),
-    });
+      getPendingSignedWithdrawals: () => this.getPendingSignedWithdrawals(),
+    }, resolve));
     return address;
   }
 
@@ -401,7 +441,6 @@ class AppData extends PureComponent<PropTypes, State> {
           ensurePropObject(response, 'signed_withdrawal'));
       const transactionId =
           await this.executeSignedWithdrawal(
-              withdrawal.asset,
               signedWithdrawal);
       return new Withdrawal(
           withdrawal.type,
@@ -416,16 +455,15 @@ class AppData extends PureComponent<PropTypes, State> {
     return withdrawal;
   };
 
-  private async executeSignedWithdrawal(
-      asset: Asset,
+  private executeSignedWithdrawal = async(
       signedWithdrawal: SignedWithdrawal):
-      Promise<string> {
+      Promise<string> => {
     const web3 = this.web3;
     if (!web3) {
       return '';
     }
     const [contract, address] = await Promise.all([
-      this.asyncGetAssetContract(web3, asset.id),
+      this.asyncGetAssetContract(web3, signedWithdrawal.assetId),
       this.getDefaultWeb3Address(),
     ]);
     const decimals = await contract.methods.decimals().call();
@@ -441,6 +479,99 @@ class AppData extends PureComponent<PropTypes, State> {
           to: contract.options.address,
           gas: 100000, // TODO: What's a good gas limit to use for this?
         });
+  };
+
+  private getPendingSignedWithdrawals(): SignedWithdrawal[]|undefined {
+    const withdrawals = this.state.getSignedWithdrawals();
+    if (!withdrawals) {
+      return undefined;
+    }
+    const filtered = [];
+    for (const w of withdrawals) {
+      const contractAddress = this.getAssetContractAddress(w.assetId);
+      if (contractAddress
+          // We test specifically for `false` because `null` may be returned if
+          // it is unknown.
+          && this.isSignedWithdrawalNonceUsed(contractAddress, w.nonce)
+              == false) {
+        filtered.push(w);
+      }
+    }
+    return filtered;
+  }
+
+  private isSignedWithdrawalNonceUsed(
+      contractAddress: string,
+      nonce: string):
+      boolean|null {
+    const used = this.state.usedSignedWithdrawalNonces.get(nonce);
+    if (used == null) {
+      this.checkSignedWithdrawalNonceUse(contractAddress, nonce);
+      return null;
+    }
+    return used;
+  }
+
+  private async checkSignedWithdrawalNonceUse(
+      contractAddress: string,
+      nonce: string) {
+    // If we're already loading this information, skip doing it again.
+    if (this.loadingUsedSignedWithdrawalNonces.has(nonce)) {
+      return;
+    }
+    this.loadingUsedSignedWithdrawalNonces.add(nonce);
+
+    try {
+      const used = await this.asyncIsSignedWithdrawalNonceUsed(
+          contractAddress,
+          nonce);
+      if (used == null) {
+        throw new Error(
+            `Could not determine if withdrawal nonce "${nonce}" has been used `
+            + `for contract "${contractAddress}".`);
+      }
+      await new Promise(resolve => this.setState({
+        usedSignedWithdrawalNonces:
+            this.state.usedSignedWithdrawalNonces.set(nonce, used),
+        getPendingSignedWithdrawals: () => this.getPendingSignedWithdrawals(),
+      }, resolve));
+    } finally {
+      this.loadingUsedSignedWithdrawalNonces.delete(nonce);
+    }
+  }
+
+  private async asyncIsSignedWithdrawalNonceUsed(
+      contractAddress: string,
+      nonce: string):
+      Promise<boolean> {
+    const web3 = this.web3;
+    if (!web3) {
+      throw new Error('Web3 client could not be found.');
+    }
+    const contract = new web3.eth.Contract(TOKEN_ABI, contractAddress);
+    return contract.methods.isWithdrawalNonceUsed(nonce).call();
+  }
+
+  private getSignedWithdrawals(): undefined {
+    this.updateSignedWithdrawals();
+    return undefined;
+  }
+
+  private async updateSignedWithdrawals() {
+    const withdrawals = await this.asyncGetSignedWithdrawals();
+    await new Promise(resolve => this.setState({
+      signedWithdrawals: withdrawals,
+      getSignedWithdrawals: () => withdrawals,
+      getPendingSignedWithdrawals: () => this.getPendingSignedWithdrawals(),
+    }, resolve));
+  }
+
+  private async asyncGetSignedWithdrawals(): Promise<SignedWithdrawal[]> {
+    const response =
+        await this.apiRequest(HttpMethod.GET, '/user/signed-withdrawals');
+    ensureObject(response);
+    return ensureArray(response, 'object')
+      .map(SignedWithdrawal.fromJSON);
   }
 
   private getRedditLoginConfig = (): [string, string]|undefined => {
@@ -456,11 +587,11 @@ class AppData extends PureComponent<PropTypes, State> {
   private async updateRedditLoginConfig() {
     const {redditClientId, redditRedirectUri} =
         await this.asyncGetRedditLoginConfig();
-    this.setState({
+    await new Promise(resolve => this.setState({
       redditClientId,
       redditRedirectUri,
       getRedditLoginConfig: () => this.getRedditLoginConfig(),
-    });
+    }, resolve));
   }
 
   private async asyncGetRedditLoginConfig():
@@ -483,10 +614,10 @@ class AppData extends PureComponent<PropTypes, State> {
 
   private async updateRedditHub() {
     const redditHub = await this.asyncGetRedditHub();
-    this.setState({
+    await new Promise(resolve => this.setState({
       redditHub,
       getRedditHub: () => this.getRedditHub(),
-    });
+    }, resolve));
   }
 
   private async asyncGetRedditHub(): Promise<string> {
@@ -505,10 +636,10 @@ class AppData extends PureComponent<PropTypes, State> {
 
   private async updateSupportSubreddit() {
     const supportSubreddit = await this.asyncGetSupportSubreddit();
-    this.setState({
+    await new Promise(resolve => this.setState({
       supportSubreddit,
       getSupportSubreddit: () => this.getSupportSubreddit(),
-    });
+    }, resolve));
   }
 
   private async asyncGetSupportSubreddit(): Promise<string> {
@@ -629,10 +760,10 @@ class AppData extends PureComponent<PropTypes, State> {
         HttpMethod.POST,
         `/user/terms:${termId}`,
         {'accept': true});
-    this.setState({
+    await new Promise(resolve => this.setState({
       unacceptedUserTerms:
           this.state.unacceptedUserTerms.filter(u => u.id != termId),
-    });
+    }, resolve));
   };
 
   private getAllUserTerms(): UserTerm[] {
@@ -646,10 +777,10 @@ class AppData extends PureComponent<PropTypes, State> {
 
   private async updateAllUserTerms() {
     const terms = await this.asyncGetAllUserTerms();
-    this.setState({
+    await new Promise(resolve => this.setState({
       allUserTerms: terms,
       getAllUserTerms: () => this.getAllUserTerms(),
-    });
+    }, resolve));
   }
 
   private async asyncGetAllUserTerms():
@@ -671,7 +802,7 @@ class AppData extends PureComponent<PropTypes, State> {
     const newTermIds: number[] =
         ensurePropArrayOfType(response, 'new_term_ids', 'number');
     let i = 0;
-    this.setState({
+    await new Promise(resolve => this.setState({
       allUserTerms: terms.map(u => {
         if (u.id == 0) {
           return new UserTerm(
@@ -683,7 +814,7 @@ class AppData extends PureComponent<PropTypes, State> {
         return u;
       }),
       getAllUserTerms: () => this.getAllUserTerms(),
-    });
+    }, resolve));
   };
 }
 

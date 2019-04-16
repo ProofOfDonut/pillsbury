@@ -491,11 +491,33 @@ export class GlazeDbClient {
             WHERE id = ${id};`
   }
 
+  // Returns the maximum amount of allowed ERC-20 withdrawals if the provider is
+  // paying gas costs. This functionality has been replaced by withdrawals that
+  // are paid for by the user.
+  // TODO: Remove this?
   async getAvailableErc20Withdrawals(userId: number): Promise<number> {
     const row = this.ensureOne(await this.pgClient.query`
       SELECT get_available_erc20_withdrawals(${userId});`);
     return ensurePropNumber(row, 'get_available_erc20_withdrawals');
   };
+
+  async getSignedWithdrawals(userId: number): Promise<SignedWithdrawal[]> {
+    const rows = await this.pgClient.query`
+      SELECT asset_id, (receipt).value AS signed_withdrawal
+          FROM withdrawals
+          WHERE from_user_id = ${userId}
+              AND (receipt).type = 'ethereum_signed_withdrawal';`;
+    return rows.map(row => {
+      const info = JSON.parse(ensurePropString(row, 'signed_withdrawal'));
+      return new SignedWithdrawal(
+          ensurePropSafeInteger(row, 'asset_id'),
+          ensurePropString(info, 'nonce'),
+          ensurePropSafeInteger(info, 'amount'),
+          ensurePropString(info, 'r'),
+          ensurePropString(info, 's'),
+          ensurePropString(info, 'v'));
+    });
+  }
 
   // TODO: Remove? I think this is unused.
   async getNextNonce(address: string): Promise<number> {

@@ -91,16 +91,16 @@ contract Donut is ERC20, ERC20Detailed, ERC20Mintable, ERC20Pausable {
       address nonce,
       uint256 value)
       public
-      pure
+      view
       returns (bytes32) {
-    return keccak256(abi.encodePacked(nonce, value));
+    return keccak256(abi.encodePacked(address(this), nonce, value));
   }
 
   function getPrefixedWithdrawalMessageHash(
       address nonce,
       uint256 value)
       private
-      pure
+      view
       returns (bytes32) {
     bytes memory prefix = '\x19Ethereum Signed Message:\n32';
     bytes32 message = getWithdrawalMessage(nonce, value);

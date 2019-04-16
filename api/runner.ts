@@ -19,6 +19,9 @@ import {routeUserCsrfToken} from './endpoints/user/csrf_token';
 import {routeUserDepositId} from './endpoints/user/deposit_id';
 import {routeUserIdentity} from './endpoints/user/identity';
 import {routeUserLogout} from './endpoints/user/logout';
+import {
+  routeUserSignedWithdrawals,
+} from './endpoints/user/signed_withdrawals';
 import {routeUserTerms} from './endpoints/user/terms';
 
 const args = minimist(process.argv.slice(2));
@@ -68,6 +71,7 @@ async function main() {
   routeUserLogout(apiServer, glazeDb);
   routeUserCsrfToken(apiServer, glazeDb);
   routeUserIdentity(apiServer, glazeDb);
+  routeUserSignedWithdrawals(apiServer, glazeDb);
   routeUserTerms(apiServer, glazeDb);
 
   const {host, port} = await apiServer.ready;

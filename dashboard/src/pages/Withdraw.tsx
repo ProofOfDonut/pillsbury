@@ -1,22 +1,39 @@
 import CircularProgress from '@material-ui/core/CircularProgress';
-import React, {PureComponent, ReactNode} from 'react';
+import {Theme, withStyles} from '@material-ui/core/styles';
+import React, {Fragment, PureComponent, ReactNode} from 'react';
 import {ensure, ensurePropString, ensureSafeInteger} from '../common/ensure';
 import {AccountType} from '../common/types/Account';
 import {Asset, AssetSymbol} from '../common/types/Asset';
 import {Balances} from '../common/types/Balances';
+import {SignedWithdrawal} from '../common/types/SignedWithdrawal';
 import {Withdrawal, WithdrawalType} from '../common/types/Withdrawal';
 import {User} from '../common/types/User';
 import AccountTypeBar from '../components/AccountTypeBar';
 import EmptyAccount from '../components/EmptyAccount';
+import PendingSignedWithdrawals from '../components/PendingSignedWithdrawals';
 import WithdrawReddit from '../components/WithdrawReddit';
 import WithdrawTokens from '../components/WithdrawTokens';
 
+const styles = (theme: Theme) => ({
+  inlineModule: {
+    display: 'inline-block',
+    marginTop: theme.spacing.unit * 2,
+    marginRight: 0,
+    verticalAlign: 'top',
+  },
+});
+
 type PropTypes = {
+  classes: {
+    inlineModule: string;
+  };
   user: User;
   getAsset: (id: number) => Asset|undefined;
   withdraw: (withdrawal: Withdrawal) => Promise<any>;
   balances: Balances|undefined;
   refreshBalances: () => void;
+  getPendingSignedWithdrawals: () => SignedWithdrawal[]|undefined;
+  executeSignedWithdrawal: ((w: SignedWithdrawal) => void)|null;
   web3ClientDetected: boolean;
 };
 type State = {
@@ -29,7 +46,7 @@ class WithdrawPage extends PureComponent<PropTypes, State> {
 
   render() {
     return (
-      <div>
+      <Fragment>
         <AccountTypeBar
             value={this.state.selectedTab}
             setValue={this.setSelectedTab} />
@@ -37,7 +54,7 @@ class WithdrawPage extends PureComponent<PropTypes, State> {
             this.state.selectedTab == AccountType.ETHEREUM_ADDRESS
                 ? this.renderWithdrawTokensForAsset
                 : this.renderRedditWithdrawForAsset)}
-      </div>
+      </Fragment>
     );
   }
 
@@ -71,15 +88,26 @@ class WithdrawPage extends PureComponent<PropTypes, State> {
     if (!asset) {
       return <CircularProgress />;
     }
+
+    const classes = this.props.classes;
     const withdraw = this.props.web3ClientDetected
         ? (amount: number) => this.withdrawErc20(asset, amount)
         : null;
     return (
-      <WithdrawTokens
-          asset={asset}
-          balance={balance}
-          refreshBalances={this.props.refreshBalances}
-          withdraw={withdraw} />
+      <Fragment>
+        <WithdrawTokens
+            className={classes.inlineModule}
+            asset={asset}
+            balance={balance}
+            refreshBalances={this.props.refreshBalances}
+            withdraw={withdraw} />
+        <PendingSignedWithdrawals
+            className={classes.inlineModule}
+            getPendingSignedWithdrawals=
+                {this.props.getPendingSignedWithdrawals}
+            getAsset={this.props.getAsset}
+            executeSignedWithdrawal={this.props.executeSignedWithdrawal} />
+      </Fragment>
     );
   };
 
@@ -134,4 +162,4 @@ class WithdrawPage extends PureComponent<PropTypes, State> {
   }
 }
 
-export default WithdrawPage;
+export default withStyles(styles, {withTheme: true})(WithdrawPage);

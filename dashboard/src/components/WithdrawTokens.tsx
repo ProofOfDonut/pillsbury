@@ -13,7 +13,6 @@ import Web3ClientNotDetected from './Web3ClientNotDetected';
 const styles = (theme: Theme) => ({
   root: {
     maxWidth: 450,
-    marginTop: theme.spacing.unit * 2,
   },
   transactionInfo: {
     marginTop: '1em',
@@ -37,6 +36,7 @@ type PropTypes = {
   balance: number;
   refreshBalances: () => void;
   withdraw: ((amount: number) => Promise<Withdrawal>)|null;
+  className?: string;
 };
 type State = {
   moduleStatus: ModuleStatus|null;
@@ -52,7 +52,7 @@ class WithdrawTokens extends PureComponent<PropTypes, State> {
   render() {
     const classes = this.props.classes;
     return (
-      <Module className={classes.root}
+      <Module className={this.getClassName()}
               status={this.state.moduleStatus}>
         <Typography variant="h5">
           Withdraw as ERC-20 DONUTS
@@ -77,6 +77,15 @@ class WithdrawTokens extends PureComponent<PropTypes, State> {
         </div>
       </Module>
     );
+  }
+  
+  private getClassName(): string {
+    const classes = this.props.classes;
+    const classNames = [classes.root];
+    if (this.props.className) {
+      classNames.push(this.props.className);
+    }
+    return classNames.join(' ');
   }
 
   private renderAmountControls() {
