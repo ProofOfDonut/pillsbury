@@ -1,8 +1,9 @@
 import {ensure} from '../ensure';
 
 export function formatNumber(n: number): string {
-  const m = /^(-)?(\d+)$/.exec(String(n));
-  ensure(m, `Cannot format number (${n}).`);
+  const m = ensure(
+      /^(-)?(\d+)$/.exec(String(n)),
+      `Cannot format number (${n}).`);
   const sign = m[1] || '';
   const numStr = m[2];
   let out = [];

@@ -23,7 +23,17 @@ async function main() {
       ethereumNodeConfigFile,
       glazeDb,
       getContractAddress);
-  console.log(`Monitoring on ${ethereumMonitor.host}.`);
+  console.log(`Monitoring on ${hidePath(ethereumMonitor.host)}.`);
+}
+
+// We hide the path from the log because it may contain sensitive information
+// like an Infura key.
+function hidePath(host: string): string {
+  const m = /^(\w+\:\/\/[\w\.\-]+)/.exec(host);
+  if (m) {
+    return m[1];
+  }
+  return '(unknown)';
 }
 
 main();

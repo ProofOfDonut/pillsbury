@@ -320,11 +320,17 @@ export class GlazeDbClient {
       type: WithdrawalType,
       username: string,
       assetId: number,
-      amount: number):
+      amount: number,
+      updateBalance: boolean):
       Promise<number> {
     const row = this.ensureOne(await this.pgClient.query`
       SELECT withdraw(
-          ${userId}, ${type}, ${username}, ${assetId}, ${amount});`);
+          ${userId},
+          ${type},
+          ${username},
+          ${assetId},
+          ${amount},
+          ${updateBalance});`);
     return ensurePropNumber(row, 'withdraw');
   }
 
@@ -332,14 +338,33 @@ export class GlazeDbClient {
       id: number,
       signedWithdrawal: SignedWithdrawal):
       Promise<void> {
-    await this.pgClient.query`
-      UPDATE withdrawals
-          SET receipt = (
-                'ethereum_signed_withdrawal',
-                ${JSON.stringify(signedWithdrawal)}
-              )::withdrawal_receipt,
-          needs_manual_review = FALSE
-          WHERE id = ${id};`;
+    const row = this.ensureOne(await this.pgClient.query`
+      SELECT from_user_id, amount, asset_id
+          FROM withdrawals
+          WHERE id = ${id}
+          LIMIT 1;`);
+    const userId = ensurePropSafeInteger(row, 'from_user_id');
+    const amount = ensurePropSafeInteger(row, 'amount');
+    const assetId = ensurePropSafeInteger(row, 'asset_id');
+
+    await this.pgClient.transaction(tx => {
+      const promises = [];
+      promises.push(tx.query`
+        UPDATE balances
+            SET balance = balance - ${amount}
+            WHERE user_id = ${userId}
+                AND asset_id = ${assetId};`);
+      promises.push(tx.query`
+        UPDATE withdrawals
+            SET receipt = (
+                  'ethereum_signed_withdrawal',
+                  ${JSON.stringify(signedWithdrawal)}
+                )::withdrawal_receipt,
+                needs_manual_review = FALSE,
+                balance_updated = TRUE
+            WHERE id = ${id};`);
+      return tx.batch(promises);
+    });
   }
 
   async redditWithdrawalSucceeded(
@@ -366,7 +391,7 @@ export class GlazeDbClient {
     // We're expecting these values to be inverses. The reason we're requiring
     // both to be passed is simply to confirm that funds are actually going to
     // be refunded if `withdrawalNeedsReview` is false.
-    ensure(!withdrawalNeedsReview && refundWithdrawal);
+    ensure(withdrawalNeedsReview != refundWithdrawal);
     let refunded = false;
     if (refundWithdrawal) {
       try {
@@ -388,11 +413,11 @@ export class GlazeDbClient {
           SET success = FALSE,
               error = ${errorMessage},
               needs_manual_review = ${withdrawalNeedsReview},
-              refunded = ${refunded}
+              balance_updated = balance_updated AND ${!refunded}
           WHERE id = ${id};`;
   }
 
-  async refundFailedWithdrawal(id: number): Promise<void> {
+  private async refundFailedWithdrawal(id: number): Promise<void> {
     const row = this.ensureOne(await this.pgClient.query`
       SELECT from_user_id,
              asset_id,

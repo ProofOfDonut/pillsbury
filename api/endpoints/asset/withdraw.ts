@@ -80,14 +80,15 @@ async function handleAssetWithdraw(
     }
   }
 
+  const updateBalanceInitially = withdrawalType != WithdrawalType.ETHEREUM;
   const withdrawalId = await glazeDb.withdraw(
       userId,
       withdrawalType,
       username,
       assetId,
-      amount);
+      amount,
+      updateBalanceInitially);
   let response: Object;
-  let refundFailedWithdrawal = false;
   try {
     if (withdrawalType == WithdrawalType.REDDIT) {
       response = await sendToRedditUser(
@@ -100,12 +101,13 @@ async function handleAssetWithdraw(
           amount,
           username);
     } else {
-      // If the call to `signWithdrawal` fails, we can assume that the
-      // signed withdrawal was not successfully inserted into the database and
-      // will not be returned to the user.
-      refundFailedWithdrawal = true;
       ensure(erc20WithdrawalsAllowed);
       ensureEqual(withdrawalType, WithdrawalType.ETHEREUM);
+      glazeDb.logEvent(
+          EventLogType.SIGN_WITHDRAWAL,
+          JSON.stringify({
+            'withdrawal_id': withdrawalId,
+          }));
       response = await signWithdrawal(
           glazeDb,
           ethereumClient,
@@ -113,9 +115,14 @@ async function handleAssetWithdraw(
           withdrawalId,
           assetId,
           amount);
+      glazeDb.logEvent(
+          EventLogType.WITHDRAWAL_SIGNED,
+          JSON.stringify({
+            'withdrawal_id': withdrawalId,
+          }));
     }
   } catch (err) {
-    const refund = refundFailedWithdrawal || RefundableError.is(err);
+    const refund = updateBalanceInitially && RefundableError.is(err);
     const needsReview = !refund;
     glazeDb.withdrawalFailed(
         withdrawalId,
@@ -190,17 +197,33 @@ async function signWithdrawal(
   const chainId = 1;
   const address = getContractAddress(chainId, assetId);
   let signedWithdrawal: SignedWithdrawal = null;
+  glazeDb.logEvent(
+      EventLogType.DEBUG,
+      JSON.stringify({
+        'message': 'Generating withdrawal nonce.',
+        'withdrawal_id': withdrawalId,
+      })); 
   const nonce = await generateWithdrawalNonce();
+  // The `signWithdrawal` method has been seen failing to complete signing a
+  // withdrawal, so tracking each step for now to see where it is failing.
+  glazeDb.logEvent(
+      EventLogType.DEBUG,
+      JSON.stringify({
+        'message': 'Signing withdrawal message.',
+        'withdrawal_id': withdrawalId,
+      })); 
   signedWithdrawal = await ethereumClient.signWithdrawalMessage(
       address,
       abi,
       assetId,
       nonce,
       amount);
-  // This needs to be the last thing that's done in this function which could
-  // possibly throw an exception. We're assuming that `signWithdrawal` will only
-  // throw an exception if the withdrawal was not successfully inserted in the
-  // database.
+  glazeDb.logEvent(
+      EventLogType.DEBUG,
+      JSON.stringify({
+        'message': 'Inserting signed withdrawal into database.',
+        'withdrawal_id': withdrawalId,
+      })); 
   await glazeDb.withdrawalSigned(withdrawalId, signedWithdrawal);
   return {'signed_withdrawal': signedWithdrawal};
 }
