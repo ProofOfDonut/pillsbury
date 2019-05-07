@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 9.6.10
--- Dumped by pg_dump version 9.6.10
+-- Dumped from database version 10.6 (Ubuntu 10.6-0ubuntu0.18.10.1)
+-- Dumped by pg_dump version 10.6 (Ubuntu 10.6-0ubuntu0.18.10.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -498,10 +498,10 @@ END; $$;
 ALTER FUNCTION public.update_last_modified_column() OWNER TO pod_admin;
 
 --
--- Name: withdraw(integer, public.withdrawal_type, text, integer, integer); Type: FUNCTION; Schema: public; Owner: pod_admin
+-- Name: withdraw(integer, public.withdrawal_type, text, integer, integer, boolean); Type: FUNCTION; Schema: public; Owner: pod_admin
 --
 
-CREATE FUNCTION public.withdraw(_from_user_id integer, _type public.withdrawal_type, _username text, _asset_id integer, _amount integer) RETURNS integer
+CREATE FUNCTION public.withdraw(_from_user_id integer, _type public.withdrawal_type, _username text, _asset_id integer, _amount integer, _update_balance boolean) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -548,8 +548,20 @@ BEGIN
   -- could happen is it could allow an extra withdrawal or two, which would be
   -- ok. The performance hit we would take for locking the table isn't worth it
   -- in this case.
-  INSERT INTO withdrawals (from_user_id, recipient, asset_id, amount)
-      VALUES (_from_user_id, _recipient, _asset_id, _amount)
+  INSERT INTO withdrawals (
+        from_user_id,
+        recipient,
+        asset_id,
+        amount,
+        balance_updated
+      )
+      VALUES (
+        _from_user_id,
+        _recipient,
+        _asset_id,
+        _amount,
+        _update_balance
+      )
       RETURNING id INTO _withdrawal_id;
 
   SELECT balance
@@ -561,16 +573,18 @@ BEGIN
     RAISE EXCEPTION 'Insufficient balance.';
   END IF;
   _new_balance := _old_balance - _amount;
-  UPDATE balances
-      SET balance = _new_balance
-      WHERE user_id = _from_user_id
-          AND asset_id = _asset_id;
+  IF _update_balance THEN
+    UPDATE balances
+        SET balance = _new_balance
+        WHERE user_id = _from_user_id
+            AND asset_id = _asset_id;
+  END IF;
 
   RETURN _withdrawal_id;
 END; $$;
 
 
-ALTER FUNCTION public.withdraw(_from_user_id integer, _type public.withdrawal_type, _username text, _asset_id integer, _amount integer) OWNER TO pod_admin;
+ALTER FUNCTION public.withdraw(_from_user_id integer, _type public.withdrawal_type, _username text, _asset_id integer, _amount integer, _update_balance boolean) OWNER TO pod_admin;
 
 SET default_tablespace = '';
 
@@ -621,6 +635,7 @@ ALTER TABLE public.assets OWNER TO pod_admin;
 --
 
 CREATE SEQUENCE public.assets_id_seq
+    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -704,6 +719,7 @@ ALTER TABLE public.deliveries OWNER TO pod_admin;
 --
 
 CREATE SEQUENCE public.deliveries_id_seq
+    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -755,6 +771,7 @@ ALTER TABLE public.erc20_deposits OWNER TO pod_admin;
 --
 
 CREATE SEQUENCE public.erc20_deposits_id_seq
+    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -790,6 +807,7 @@ ALTER TABLE public.event_logs OWNER TO pod_admin;
 --
 
 CREATE SEQUENCE public.event_logs_id_seq
+    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -843,6 +861,7 @@ ALTER TABLE public.queued_transactions OWNER TO pod_admin;
 --
 
 CREATE SEQUENCE public.queued_transactions_id_seq
+    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -895,6 +914,7 @@ ALTER TABLE public.refunds OWNER TO pod_admin;
 --
 
 CREATE SEQUENCE public.refunds_id_seq
+    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -970,6 +990,7 @@ ALTER TABLE public.subreddits OWNER TO pod_admin;
 --
 
 CREATE SEQUENCE public.subreddits_id_seq
+    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -1018,6 +1039,7 @@ ALTER TABLE public.user_terms OWNER TO pod_admin;
 --
 
 CREATE SEQUENCE public.user_terms_id_seq
+    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -1054,6 +1076,7 @@ ALTER TABLE public.users OWNER TO pod_admin;
 --
 
 CREATE SEQUENCE public.users_id_seq
+    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -1098,7 +1121,7 @@ CREATE TABLE public.withdrawals (
     public_id public.citext DEFAULT public.generate_public_id() NOT NULL,
     receipt public.withdrawal_receipt,
     needs_manual_review boolean DEFAULT true NOT NULL,
-    refunded boolean DEFAULT false NOT NULL
+    balance_updated boolean NOT NULL
 );
 
 
@@ -1109,6 +1132,7 @@ ALTER TABLE public.withdrawals OWNER TO pod_admin;
 --
 
 CREATE SEQUENCE public.withdrawals_id_seq
+    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
