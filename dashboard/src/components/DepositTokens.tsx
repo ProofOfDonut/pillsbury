@@ -54,6 +54,7 @@ type State = {
   metaMaskBalanceFormatted: string;
   moduleStatus: ReactNode;
   expanded: boolean;
+  amount: number;
 };
 class DepositTokens extends PureComponent<PropTypes, State> {
   state = {
@@ -61,6 +62,7 @@ class DepositTokens extends PureComponent<PropTypes, State> {
     metaMaskBalanceFormatted: '',
     moduleStatus: null,
     expanded: false,
+    amount: 0,
   };
 
   render() {
@@ -95,6 +97,8 @@ class DepositTokens extends PureComponent<PropTypes, State> {
         <div>
           <AmountControls
               label="Deposit"
+              amount={this.state.amount}
+              setAmount={this.setAmount}
               action={this.deposit} />
           {this.renderWeb3ClientBalance()}
         </div>
@@ -188,6 +192,10 @@ class DepositTokens extends PureComponent<PropTypes, State> {
           false,
           `Successfully deposited ${asset.name.format(amount)}.`),
     });
+  };
+
+  private setAmount = (amount: number) => {
+    this.setState({amount});
   };
 }
 

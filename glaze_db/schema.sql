@@ -215,6 +215,35 @@ END; $$;
 ALTER FUNCTION public.add_inbound_delivery(_reddit_message_id text, _subreddit text, _from_reddit_user text, _amount integer, _sent_time timestamp with time zone) OWNER TO pod_admin;
 
 --
+-- Name: calculate_erc20_withdrawal_fee(integer, integer); Type: FUNCTION; Schema: public; Owner: pod_admin
+--
+
+CREATE FUNCTION public.calculate_erc20_withdrawal_fee(_user_id integer, _amount integer) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  _fee_type text;
+  _fee_value int;
+BEGIN
+  -- Select both values at the same time so we don't have to worry about race
+  -- conditions.
+  SELECT (SELECT value FROM vars WHERE key = 'erc20_withdrawal_fee_type'),
+         (SELECT value FROM vars WHERE key = 'erc20_withdrawal_fee_value')
+      INTO _fee_type, _fee_value;
+
+  IF _fee_type = 'static' THEN
+    RETURN _fee_value;
+  ELSIF _fee_type = 'relative' THEN
+    RETURN ceil((_fee_value * _amount)::decimal / 10000);
+  ELSE
+    RAISE EXCEPTION 'Unexpected fee type "%".', _fee_type;
+  END IF;
+END; $$;
+
+
+ALTER FUNCTION public.calculate_erc20_withdrawal_fee(_user_id integer, _amount integer) OWNER TO pod_admin;
+
+--
 -- Name: create_session_for_reddit_user(text, text, text, text, timestamp with time zone); Type: FUNCTION; Schema: public; Owner: pod_admin
 --
 
@@ -507,6 +536,9 @@ CREATE FUNCTION public.withdraw(_from_user_id integer, _type public.withdrawal_t
 DECLARE
   _old_balance int;
   _new_balance int;
+  _fee int;
+  _fee_type text;
+  _fee_value int;
   _withdrawal_id int;
   _available_withdrawals int;
   _recipient account;
@@ -530,6 +562,8 @@ BEGIN
             AND asset_id = _asset_id
             -- A -1 deposit limit indicates no limit.
             AND deposit_limit >= 0;
+
+    _fee := 0;
   ELSIF _type = 'ethereum' THEN
     SELECT get_available_erc20_withdrawals(_from_user_id)
         INTO _available_withdrawals;
@@ -539,6 +573,8 @@ BEGIN
 
     -- The recipient is unknown, so we set this to NULL.
     _recipient := NULL;
+
+    _fee := calculate_erc20_withdrawal_fee(_from_user_id, _amount);
   ELSE
     RAISE EXCEPTION 'Unexpected withdrawal type "%"', _type;
   END IF;
@@ -553,6 +589,7 @@ BEGIN
         recipient,
         asset_id,
         amount,
+        fee,
         balance_updated
       )
       VALUES (
@@ -560,6 +597,7 @@ BEGIN
         _recipient,
         _asset_id,
         _amount,
+        _fee,
         _update_balance
       )
       RETURNING id INTO _withdrawal_id;
@@ -569,15 +607,21 @@ BEGIN
       FROM balances
       WHERE user_id = _from_user_id
           AND asset_id = _asset_id;
-  IF _old_balance IS NULL OR _old_balance < _amount THEN
+  IF _old_balance IS NULL THEN
     RAISE EXCEPTION 'Insufficient balance.';
   END IF;
-  _new_balance := _old_balance - _amount;
+  _new_balance := _old_balance - _amount - _fee;
+  IF _new_balance < 0 THEN
+    RAISE EXCEPTION 'Insufficient balance.';
+  END IF;
   IF _update_balance THEN
     UPDATE balances
         SET balance = _new_balance
         WHERE user_id = _from_user_id
             AND asset_id = _asset_id;
+    UPDATE vars
+        SET value = (value::int + _fee)::text
+        WHERE key = 'collected_fees';
   END IF;
 
   RETURN _withdrawal_id;
@@ -1121,7 +1165,8 @@ CREATE TABLE public.withdrawals (
     public_id public.citext DEFAULT public.generate_public_id() NOT NULL,
     receipt public.withdrawal_receipt,
     needs_manual_review boolean DEFAULT true NOT NULL,
-    balance_updated boolean NOT NULL
+    balance_updated boolean NOT NULL,
+    fee integer NOT NULL
 );
 
 

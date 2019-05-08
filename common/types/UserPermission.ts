@@ -1,5 +1,6 @@
 export enum UserPermission {
   EDIT_USER_TERMS = 'edit_user_terms',
+  EDIT_FEES = 'edit_fees',
 }
 
 // `Object.values` works here only because UserPermission values are strings.

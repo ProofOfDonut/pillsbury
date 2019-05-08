@@ -22,24 +22,20 @@ type PropTypes = {
     fieldButton: string;
   };
   label: string;
+  amount: number;
+  setAmount: (amount: number) => void;
   action: (amount: number) => void;
 };
-type State = {
-  amount: number;
-};
+type State = {};
 class AmountControls extends PureComponent<PropTypes, State> {
-  state = {
-    amount: 0,
-  };
-
   render() {
     const classes = this.props.classes;
     return (
       <div className={classes.fieldContainer}>
         <div className={classes.fieldText}>
           <AmountField
-              value={this.state.amount}
-              setValue={this.setAmount} />
+              value={this.props.amount}
+              setValue={this.props.setAmount} />
         </div>
         <div className={classes.fieldButton}>
           <Button variant="contained"
@@ -52,12 +48,8 @@ class AmountControls extends PureComponent<PropTypes, State> {
     );
   }
 
-  private setAmount = (amount: number) => {
-    this.setState({amount});
-  };
-
   private action = () => {
-    this.props.action(this.state.amount);
+    this.props.action(this.props.amount);
   };
 }
 

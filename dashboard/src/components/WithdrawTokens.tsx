@@ -1,9 +1,11 @@
 import Typography from '@material-ui/core/Typography';
 import {Theme, withStyles} from '@material-ui/core/styles';
 import React, {PureComponent} from 'react';
-import {ensure} from '../common/ensure';
+import {ensure, ensureEqual} from '../common/ensure';
 import {Asset} from '../common/types/Asset';
+import {Fee, FeeType} from '../common/types/Fee';
 import {Withdrawal} from '../common/types/Withdrawal';
+import {User} from '../common/types/User';
 import AddressLink from './AddressLink';
 import AmountControls from './AmountControls';
 import Module, {ModuleStatus} from './Module';
@@ -32,20 +34,24 @@ type PropTypes = {
     accountInfo: string;
     refreshButton: string;
   };
+  user: User;
   asset: Asset;
   balance: number;
   refreshBalances: () => void;
   withdraw: ((amount: number) => Promise<Withdrawal>)|null;
+  getErc20WithdrawalFee: (userId: string) => Fee|undefined;
   className?: string;
 };
 type State = {
   moduleStatus: ModuleStatus|null;
+  amount: number;
 };
 class WithdrawTokens extends PureComponent<PropTypes, State> {
   constructor(props: PropTypes) {
     super(props);
     this.state = {
       moduleStatus: null,
+      amount: 0,
     };
   }
 
@@ -66,6 +72,12 @@ class WithdrawTokens extends PureComponent<PropTypes, State> {
         </p>
         {this.renderAmountControls()}
         <div className={classes.accountInfo}>
+          <div>
+            {'Withdrawal fee: '}
+            <b>
+              {this.renderWithdrawalFee()}
+            </b>
+          </div>
           <div>
             {'Account balance: '}
             <b>{this.props.asset.name.format(this.props.balance)}</b>
@@ -93,6 +105,8 @@ class WithdrawTokens extends PureComponent<PropTypes, State> {
       return (
         <AmountControls
             label="Withdraw"
+            amount={this.state.amount}
+            setAmount={this.setAmount}
             action={this.withdrawAmount} />
       );
     }
@@ -139,6 +153,23 @@ class WithdrawTokens extends PureComponent<PropTypes, State> {
       );
     }
   }
+  
+  private renderWithdrawalFee(): string {
+    const fee = this.props.getErc20WithdrawalFee(this.props.user.id);
+    if (!fee) {
+      return '\u2026';
+    }
+    if (fee.type == FeeType.STATIC) {
+      return this.props.asset.name.format(fee.value);
+    }
+    ensureEqual(fee.type, FeeType.RELATIVE);
+    return this.props.asset.name.format(
+        Math.ceil(this.state.amount * fee.value / 10000));
+  }
+
+  private setAmount = (amount: number) => {
+    this.setState({amount});
+  };
 }
 
 export default withStyles(styles, {withTheme: true})(WithdrawTokens);

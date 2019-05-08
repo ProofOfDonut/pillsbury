@@ -21,6 +21,7 @@ import {
 } from '../common/types/Asset';
 import {Balances} from '../common/types/Balances';
 import {EventLogType} from '../common/types/EventLogType';
+import {Fee, FeeType} from '../common/types/Fee';
 import {QueuedTransaction} from '../common/types/QueuedTransaction';
 import {SignedWithdrawal} from '../common/types/SignedWithdrawal';
 import {User} from '../common/types/User';
@@ -339,19 +340,20 @@ export class GlazeDbClient {
       signedWithdrawal: SignedWithdrawal):
       Promise<void> {
     const row = this.ensureOne(await this.pgClient.query`
-      SELECT from_user_id, amount, asset_id
+      SELECT from_user_id, amount, fee, asset_id
           FROM withdrawals
           WHERE id = ${id}
           LIMIT 1;`);
     const userId = ensurePropSafeInteger(row, 'from_user_id');
     const amount = ensurePropSafeInteger(row, 'amount');
+    const fee = ensurePropSafeInteger(row, 'fee');
     const assetId = ensurePropSafeInteger(row, 'asset_id');
 
     await this.pgClient.transaction(tx => {
       const promises = [];
       promises.push(tx.query`
         UPDATE balances
-            SET balance = balance - ${amount}
+            SET balance = balance - ${amount} - ${fee}
             WHERE user_id = ${userId}
                 AND asset_id = ${assetId};`);
       promises.push(tx.query`
@@ -363,6 +365,10 @@ export class GlazeDbClient {
                 needs_manual_review = FALSE,
                 balance_updated = TRUE
             WHERE id = ${id};`);
+      promises.push(tx.query`
+        UPDATE vars
+            SET value = (value::int + ${fee})::text
+            WHERE key = 'collected_fees';`);
       return tx.batch(promises);
     });
   }
@@ -445,6 +451,39 @@ export class GlazeDbClient {
           SET balance = balance + ${amount}
           WHERE user_id = ${userId}
               AND asset_id = ${assetId};`;
+  }
+
+  async getErc20WithdrawalFee(): Promise<Fee> {
+    const rows = await this.pgClient.query`
+      SELECT value
+          FROM vars
+          WHERE key = 'erc20_withdrawal_fee_type'
+              OR key = 'erc20_withdrawal_fee_value'
+          ORDER BY key ASC;`;
+    ensureEqual(rows.length, 2);
+    return new Fee(
+        ensurePropInEnum(rows[0], 'value', FeeType),
+        ensureSafeInteger(+ensurePropString(rows[1], 'value')));
+  }
+
+  async setErc20WithdrawalFee(
+      isRootAdmin: (username: string) => boolean,
+      userId: number,
+      fee: Fee) {
+    await this.requireUserPermission(
+        isRootAdmin,
+        userId,
+        UserPermission.EDIT_FEES);
+    await this.pgClient.transaction(tx => tx.batch([
+      tx.query`
+        UPDATE vars
+            SET value = ${fee.type}
+            WHERE key = 'erc20_withdrawal_fee_type';`,
+      tx.query`
+        UPDATE vars
+            SET value = ${fee.value}
+            WHERE key = 'erc20_withdrawal_fee_value';`,
+    ]));
   }
 
   async enqueueTransaction(tx: QueuedTransaction): Promise<string> {
@@ -722,7 +761,7 @@ export class GlazeDbClient {
     return newTermIds;
   }
 
-  private async requireUserPermission(
+  async requireUserPermission(
       isRootAdmin: (username: string) => boolean,
       userId: number,
       permission: UserPermission) {

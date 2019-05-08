@@ -8,6 +8,7 @@ import Chrome from './Chrome';
 import {ensure} from './common/ensure';
 import {Asset, AssetName, AssetSymbol} from './common/types/Asset';
 import {Balances} from './common/types/Balances';
+import {Fee} from './common/types/Fee';
 import {History} from './common/types/History';
 import {SignedWithdrawal} from './common/types/SignedWithdrawal';
 import {User} from './common/types/User';
@@ -62,6 +63,9 @@ type PropTypes = {
   histories: Map<string, History>;
   depositTokens: ((asset: Asset, amount: number) => void)|null;
   withdraw: (withdawal: Withdrawal) => Promise<Withdrawal>;
+  getErc20WithdrawalFee: (userId: string) => Fee|undefined;
+  getBaseErc20WithdrawalFee: () => Fee|undefined;
+  setBaseErc20WithdrawalFee: (fee: Fee) => void;
   getDepositId: () => Promise<string>;
   getContractAddress: () => Promise<string>;
   getRedditLoginConfig: () => [string, string]|undefined;
@@ -222,6 +226,7 @@ class App extends PureComponent<PropTypes, State> {
           user={user}
           getAsset={this.props.getAsset}
           withdraw={this.props.withdraw}
+          getErc20WithdrawalFee={this.props.getErc20WithdrawalFee}
           balances={balances}
           refreshBalances={this.refreshPlatformBalances}
           getPendingSignedWithdrawals={this.props.getPendingSignedWithdrawals}
@@ -235,7 +240,9 @@ class App extends PureComponent<PropTypes, State> {
       <AdminPage
           userPermissions={this.props.userPermissions}
           getAllUserTerms={this.props.getAllUserTerms}
-          setUserTerms={this.props.setUserTerms} />
+          setUserTerms={this.props.setUserTerms}
+          getErc20WithdrawalFee={this.props.getBaseErc20WithdrawalFee}
+          setErc20WithdrawalFee={this.props.setBaseErc20WithdrawalFee} />
     );
   };
 

@@ -35,10 +35,12 @@ type PropTypes = {
 };
 type State = {
   moduleStatus: ModuleStatus|null;
+  amount: number;
 };
 class WithdrawTokens extends PureComponent<PropTypes, State> {
   state = {
     moduleStatus: null,
+    amount: 0,
   };
 
   render() {
@@ -55,6 +57,8 @@ class WithdrawTokens extends PureComponent<PropTypes, State> {
         <div>
           <AmountControls
               label="Withdraw"
+              amount={this.state.amount}
+              setAmount={this.setAmount}
               action={this.withdraw} />
         </div>
         <div className={classes.accountInfo}>
@@ -83,6 +87,10 @@ class WithdrawTokens extends PureComponent<PropTypes, State> {
           + `${withdrawal.asset.name.format(withdrawal.amount)} to `
           + `/u/${withdrawal.username}.`),
     });
+  };
+
+  private setAmount = (amount: number) => {
+    this.setState({amount});
   };
 }
 

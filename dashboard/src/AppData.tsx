@@ -18,6 +18,7 @@ import {
 import {HttpMethod, httpMethodToString} from './common/net/http_method';
 import {Asset, AssetName, AssetSymbol} from './common/types/Asset';
 import {Balances} from './common/types/Balances';
+import {Fee} from './common/types/Fee';
 import {History} from './common/types/History';
 import {SignedWithdrawal} from './common/types/SignedWithdrawal';
 import {User} from './common/types/User';
@@ -51,6 +52,10 @@ type State = {
   getSignedWithdrawals: () => SignedWithdrawal[]|undefined;
   usedSignedWithdrawalNonces: ImmutableMap<string, boolean>;
   getPendingSignedWithdrawals: () => SignedWithdrawal[]|undefined;
+  getErc20WithdrawalFee: (userId: string) => Fee|undefined;
+  getBaseErc20WithdrawalFee: () => Fee|undefined;
+  erc20WithdrawalFees: ImmutableMap<string, Fee>;
+  baseErc20WithdrawalFee: Fee|null;
   histories: ImmutableMap<string, History>;
   redditClientId: string;
   redditRedirectUri: string;
@@ -94,6 +99,11 @@ class AppData extends PureComponent<PropTypes, State> {
       getSignedWithdrawals: () => this.getSignedWithdrawals(),
       usedSignedWithdrawalNonces: ImmutableMap<string, boolean>(),
       getPendingSignedWithdrawals: () => this.getPendingSignedWithdrawals(),
+      getErc20WithdrawalFee:
+          (userId: string) => this.getErc20WithdrawalFee(userId),
+      getBaseErc20WithdrawalFee: () => this.getBaseErc20WithdrawalFee(),
+      erc20WithdrawalFees: ImmutableMap<string, Fee>(),
+      baseErc20WithdrawalFee: null,
       histories: ImmutableMap<string, History>(),
       redditClientId: '',
       redditRedirectUri: '',
@@ -152,6 +162,9 @@ class AppData extends PureComponent<PropTypes, State> {
         getSignedWithdrawals={this.state.getSignedWithdrawals}
         getPendingSignedWithdrawals={this.state.getPendingSignedWithdrawals}
         executeSignedWithdrawal={hasWeb3 ? this.executeSignedWithdrawal : null}
+        getErc20WithdrawalFee={this.state.getErc20WithdrawalFee}
+        getBaseErc20WithdrawalFee={this.state.getBaseErc20WithdrawalFee}
+        setBaseErc20WithdrawalFee={this.setBaseErc20WithdrawalFee}
         getDepositId={() => this.asyncGetDepositId(ensure(this.state.user).id)}
         getContractAddress={this.tmpAsyncGetDonutContractAddress}
         getRedditLoginConfig={this.state.getRedditLoginConfig}
@@ -336,7 +349,8 @@ class AppData extends PureComponent<PropTypes, State> {
     if (!this.state.contractAddressByAssetId.has(assetId)) {
       return this.loadAssetContractAddress(assetId);
     }
-    return ensure(this.state.contractAddressByAssetId.get(assetId));
+    return Promise.resolve(
+        ensure(this.state.contractAddressByAssetId.get(assetId)));
   }
 
   private async asyncGetAssetContract(
@@ -407,7 +421,7 @@ class AppData extends PureComponent<PropTypes, State> {
     return null;
   }
 
-  private async asyncGetDepositId(userId: number): Promise<string> {
+  private async asyncGetDepositId(userId: string): Promise<string> {
     const response = ensureObject(
         await this.apiRequest(HttpMethod.GET, `/user:${userId}/deposit-id`));
     return ensurePropString(response, 'deposit_id');
@@ -506,6 +520,76 @@ class AppData extends PureComponent<PropTypes, State> {
     }
     return filtered;
   }
+  
+  private getErc20WithdrawalFee(userId: string): Fee|undefined {
+    const fee = this.state.erc20WithdrawalFees.get(userId);
+    if (fee == null) {
+      this.updateErc20WithdrawalFee(userId);
+      return undefined;
+    }
+    return fee;
+  }
+
+  private async updateErc20WithdrawalFee(userId: string) {
+    const fee = await this.asyncGetErc20WithdrawalFee(userId);
+    this.setState({
+      erc20WithdrawalFees: this.state.erc20WithdrawalFees.set(userId, fee),
+      getErc20WithdrawalFee:
+          (userId: string) => this.getErc20WithdrawalFee(userId),
+    });
+  }
+
+  private async asyncGetErc20WithdrawalFee(userId: string): Promise<Fee> {
+    const response =
+        await this.apiRequest(
+            HttpMethod.GET,
+            `/user:${userId}/erc20-withdrawal-fee`);
+    ensureObject(response);
+    return Fee.fromJSON(ensurePropObject(response, 'fee'));
+  }
+
+  private getBaseErc20WithdrawalFee(): Fee|undefined {
+    const fee = this.state.baseErc20WithdrawalFee;
+    if (fee == null) {
+      this.updateBaseErc20WithdrawalFee();
+      return undefined;
+    }
+    return fee;
+  }
+
+  private async updateBaseErc20WithdrawalFee() {
+    const fee = await this.asyncGetBaseErc20WithdrawalFee();
+    this.setState({
+      baseErc20WithdrawalFee: fee,
+      getBaseErc20WithdrawalFee: () => this.getBaseErc20WithdrawalFee(),
+    });
+  }
+
+  private async asyncGetBaseErc20WithdrawalFee(): Promise<Fee> {
+    const response =
+        await this.apiRequest(
+            HttpMethod.GET,
+            `/app/erc20-withdrawal-fee`);
+    ensureObject(response);
+    return Fee.fromJSON(ensurePropObject(response, 'fee'));
+  }
+
+  private setBaseErc20WithdrawalFee = async (fee: Fee) => {
+    await this.apiRequest(
+        HttpMethod.POST,
+        `/app/erc20-withdrawal-fee`,
+        {'fee': fee});
+    await new Promise(resolve => this.setState({
+      baseErc20WithdrawalFee: fee,
+    }, resolve));
+    await new Promise(resolve => this.setState({
+      baseErc20WithdrawalFee: fee,
+      getBaseErc20WithdrawalFee: () => this.getBaseErc20WithdrawalFee(),
+      erc20WithdrawalFees: ImmutableMap<string, Fee>(),
+      getErc20WithdrawalFee:
+          (userId: string) => this.getErc20WithdrawalFee(userId),
+    }, resolve));
+  };
 
   private isSignedWithdrawalNonceUsed(
       contractAddress: string,

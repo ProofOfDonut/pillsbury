@@ -211,6 +211,7 @@ async function signWithdrawal(
       JSON.stringify({
         'message': 'Signing withdrawal message.',
         'withdrawal_id': withdrawalId,
+        'nonce': nonce,
       })); 
   signedWithdrawal = await ethereumClient.signWithdrawalMessage(
       address,

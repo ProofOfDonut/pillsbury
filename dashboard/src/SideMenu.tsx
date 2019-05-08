@@ -110,7 +110,8 @@ class ResponsiveDrawer extends PureComponent<PropTypes, State> {
   }
 
   private renderAdminItem() {
-    if (this.props.userPermissions.includes(UserPermission.EDIT_USER_TERMS)) {
+    if (this.props.userPermissions.includes(UserPermission.EDIT_USER_TERMS)
+        || this.props.userPermissions.includes(UserPermission.EDIT_FEES)) {
       return (
         <Fragment>
           <Divider />

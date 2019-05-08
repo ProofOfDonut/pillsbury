@@ -4,6 +4,9 @@ import {ensure, ensurePropString} from '../common/ensure';
 import {parseHostAndPort} from '../common/strings/host_and_port';
 import {createGlazeDbClientFromConfigFiles} from '../glaze_db';
 import {ApiServer} from './server';
+import {
+  routeAppErc20WithdrawalFee,
+} from './endpoints/app/erc20_withdrawal_fee';
 import {routeAsset} from './endpoints/asset';
 import {routeAssetContract} from './endpoints/asset/contract';
 import {routeAssetWithdraw} from './endpoints/asset/withdraw';
@@ -23,6 +26,9 @@ import {
   routeUserSignedWithdrawals,
 } from './endpoints/user/signed_withdrawals';
 import {routeUserTerms} from './endpoints/user/terms';
+import {
+  routeUserErc20WithdrawalFee,
+} from './endpoints/user/erc20_withdrawal_fee';
 
 const args = minimist(process.argv.slice(2));
 const configFile = ensurePropString(args, 'config');
@@ -52,6 +58,7 @@ async function main() {
       glazeDb);
   const apiConfig = await apiServer.config;
 
+  routeAppErc20WithdrawalFee(apiServer, glazeDb);
   routeAsset(apiServer, glazeDb);
   routeAssetContract(apiServer, glazeDb, apiConfig.getContractAddress);
   routeAssetWithdraw(
@@ -73,6 +80,7 @@ async function main() {
   routeUserIdentity(apiServer, glazeDb);
   routeUserSignedWithdrawals(apiServer, glazeDb);
   routeUserTerms(apiServer, glazeDb);
+  routeUserErc20WithdrawalFee(apiServer, glazeDb);
 
   const {host, port} = await apiServer.ready;
   if (host) {

@@ -1,4 +1,7 @@
-export function ensure(test: any, message: string = 'Validation failed.'): any {
+export function ensure<T>(
+    test: T|null|undefined,
+    message: string = 'Validation failed.'):
+    T {
   if (!test) {
     throw new Error(message);
   }

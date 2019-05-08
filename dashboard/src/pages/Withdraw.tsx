@@ -5,6 +5,7 @@ import {ensure, ensurePropString, ensureSafeInteger} from '../common/ensure';
 import {AccountType} from '../common/types/Account';
 import {Asset, AssetSymbol} from '../common/types/Asset';
 import {Balances} from '../common/types/Balances';
+import {Fee} from '../common/types/Fee';
 import {SignedWithdrawal} from '../common/types/SignedWithdrawal';
 import {Withdrawal, WithdrawalType} from '../common/types/Withdrawal';
 import {User} from '../common/types/User';
@@ -30,6 +31,7 @@ type PropTypes = {
   user: User;
   getAsset: (id: number) => Asset|undefined;
   withdraw: (withdrawal: Withdrawal) => Promise<any>;
+  getErc20WithdrawalFee: (userId: string) => Fee|undefined;
   balances: Balances|undefined;
   refreshBalances: () => void;
   getPendingSignedWithdrawals: () => SignedWithdrawal[]|undefined;
@@ -97,10 +99,12 @@ class WithdrawPage extends PureComponent<PropTypes, State> {
       <Fragment>
         <WithdrawTokens
             className={classes.inlineModule}
+            user={this.props.user}
             asset={asset}
             balance={balance}
             refreshBalances={this.props.refreshBalances}
-            withdraw={withdraw} />
+            withdraw={withdraw}
+            getErc20WithdrawalFee={this.props.getErc20WithdrawalFee} />
         <PendingSignedWithdrawals
             className={classes.inlineModule}
             getPendingSignedWithdrawals=
