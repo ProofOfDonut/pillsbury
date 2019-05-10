@@ -1,35 +1,50 @@
 import {Request, Response} from 'express';
 import {lookup as geoIpLookup} from 'geoip-lite';
 import {
-  ensure, ensureArray, ensureObject, ensurePropString, ensureString,
+  ensure,
+  ensureObject,
+  ensurePropArray,
+  ensurePropString,
+  ensureString,
 } from '../common/ensure';
 
 function ALLOW_ALL() {
   return true;
 }
 
-export function filterConfigToExpressMiddleware(config: any) {
+export function filterConfigToFunction(
+    config: any):
+    (method: string, route: string, ip: string) => boolean {
   return createFilterRequestFunction(filterConfigToDecider(config));
 }
 
 function createFilterRequestFunction(
-    allow: (geoInfo: Object) => boolean):
-    (req: Request, res: Response, next: () => void) => void {
-  return (req: Request, res: Response, next: () => void) => {
-    const geoInfo = geoIpLookup(req['ip']);
-    if (geoInfo && !allow(geoInfo)) {
-      res.status(451).end();
-      return;
+    allow: (geoInfo: Object, method: string, route: string) => boolean):
+    (method: string, route: string, ip: string) => boolean {
+  return (method: string, route: string, ip: string) => {
+    if (method == 'OPTIONS') {
+      return true;
     }
-    next();
+    const geoInfo = geoIpLookup(ip);
+    if (geoInfo && !allow(geoInfo, method, route)) {
+      return false;
+    }
+    return true;
   };
 }
 
-function filterConfigToDecider(config: any): (geoInfo: Object) => boolean {
+function filterConfigToDecider(
+    config: any):
+    (geoInfo: Object, method: string, route: string) => boolean {
   if (!config) {
     return ALLOW_ALL;
   }
-  const filters = ensureArray(config);
+  const C = ensureObject(config);
+  const filters = ensurePropArray(config, 'filters');
+  const endpointWhitelist =
+      config['endpoint-whitelist']
+          ? ensurePropArray(config, 'endpoint-whitelist')
+          : [];
   const filterFunctions = <((geoInfo: Object) => boolean)[]>[];
   for (const filter of filters) {
     const f = ensureObject(filter);
@@ -41,7 +56,20 @@ function filterConfigToDecider(config: any): (geoInfo: Object) => boolean {
   if (filterFunctions.length == 0) {
     return ALLOW_ALL;
   }
-  return (geoInfo: Object) => filterFunctions.every(fn => fn(geoInfo));
+  const whitelistFunctions = <((method: string, route: string) => boolean)[]>[];
+  for (const whitelist of endpointWhitelist) {
+    const w = ensureObject(whitelist);
+    const method = ensurePropString(w, 'method');
+    const route = ensurePropString(w, 'route');
+    whitelistFunctions.push(
+        (m: string, r: string) => m == method && r == route);
+  }
+  return (
+      geoInfo: Object,
+      method: string,
+      route: string) =>
+      whitelistFunctions.some(fn => fn(method, route))
+          || filterFunctions.every(fn => fn(geoInfo));
 }
 
 function createGeoFilter(

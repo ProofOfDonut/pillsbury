@@ -25,7 +25,7 @@ import {EthereumClient, createEthereumClient} from '../lib/ethereum';
 import {RedditClient} from '../lib/reddit';
 import {GlazeDbClient} from '../glaze_db';
 import {checkCsrfToken} from './csrf';
-import {filterConfigToExpressMiddleware} from './location_filter';
+import {filterConfigToFunction} from './location_filter';
 import {getHeader} from './request';
 
 type Ready = {
@@ -50,6 +50,9 @@ export class ApiServer {
 
   private app: Promise<Application>;
   private glazeDb: GlazeDbClient;
+  private filterRequestByGeo:
+      (method: string, route: string, ip: string) => boolean =
+      (method: string, route: string, ip: string) => true;
 
   constructor(
       configFile: string,
@@ -224,11 +227,11 @@ export class ApiServer {
           }));
         return;
       }
+      
+      this.filterRequestByGeo = filterConfigToFunction(requestFilter);
 
       next();
     });
-
-    app.use(filterConfigToExpressMiddleware(requestFilter));
 
     const serverReady = () => readyResolve({host, port});
     if (httpsConfig) {
@@ -263,6 +266,10 @@ export class ApiServer {
         async (req: Request, res: Response) => {  
       try {
         await this.logApiEndpointEvent(req, route);
+        if (!this.filterRequestByGeo(req.method, route, req.ip)) {
+          res.status(451).end();
+          return;
+        }
         if (doCsrfTokenCheck) {
           await checkCsrfToken(req, this.glazeDb);
         }

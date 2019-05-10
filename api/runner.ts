@@ -10,10 +10,13 @@ import {
 import {routeAsset} from './endpoints/asset';
 import {routeAssetContract} from './endpoints/asset/contract';
 import {routeAssetWithdraw} from './endpoints/asset/withdraw';
+import {
+  routeAssetWithdrawAllToReddit,
+} from './endpoints/asset/withdraw_all_to_reddit';
 import {routeRedditConfig} from './endpoints/reddit/config';
 import {routeRedditHub} from './endpoints/reddit/hub';
 import {routeRedditLogin} from './endpoints/reddit/login';
-import {routeRedditSupportSub} from './endpoints/reddit/support-sub';
+import {routeRedditSupportSub} from './endpoints/reddit/support_sub';
 import {
   routeUserAvailableErc20Withdrawals,
 } from './endpoints/user/available_erc20_withdrawals';
@@ -26,6 +29,7 @@ import {
   routeUserSignedWithdrawals,
 } from './endpoints/user/signed_withdrawals';
 import {routeUserTerms} from './endpoints/user/terms';
+import {routeUserTestGeoAccess} from './endpoints/user/test_geo_access';
 import {
   routeUserErc20WithdrawalFee,
 } from './endpoints/user/erc20_withdrawal_fee';
@@ -68,6 +72,13 @@ async function main() {
       redditPuppetHost,
       redditPuppetPort,
       apiConfig.getContractAddress);
+  routeAssetWithdrawAllToReddit(
+      apiServer,
+      glazeDb,
+      apiConfig.redditClient,
+      redditPuppetHost,
+      redditPuppetPort,
+      apiConfig.getContractAddress);
   routeRedditConfig(apiServer);
   routeRedditHub(apiServer);
   routeRedditLogin(apiServer, glazeDb);
@@ -80,6 +91,7 @@ async function main() {
   routeUserIdentity(apiServer, glazeDb);
   routeUserSignedWithdrawals(apiServer, glazeDb);
   routeUserTerms(apiServer, glazeDb);
+  routeUserTestGeoAccess(apiServer);
   routeUserErc20WithdrawalFee(apiServer, glazeDb);
 
   const {host, port} = await apiServer.ready;

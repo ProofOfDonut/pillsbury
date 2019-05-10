@@ -19,6 +19,7 @@ import AdminPage from './pages/Admin';
 import BalancesPage from './pages/Balances';
 import DepositPage from './pages/Deposit';
 import ErrorPage from './pages/Error';
+import GeoBlockedPage from './pages/GeoBlocked';
 import HistoryPage from './pages/History';
 import LoginPage from './pages/Login';
 import MaintenancePage from './pages/Maintenance';
@@ -44,6 +45,7 @@ type PropTypes = {
   };
   initialized: boolean;
   error: any;
+  geoBlocked: boolean;
   apiAvailable: boolean;
   csrfToken: string;
   pathname: string;
@@ -63,6 +65,7 @@ type PropTypes = {
   histories: Map<string, History>;
   depositTokens: ((asset: Asset, amount: number) => void)|null;
   withdraw: (withdawal: Withdrawal) => Promise<Withdrawal>;
+  withdrawAllToReddit: () => void;
   getErc20WithdrawalFee: (userId: string) => Fee|undefined;
   getBaseErc20WithdrawalFee: () => Fee|undefined;
   setBaseErc20WithdrawalFee: (fee: Fee) => void;
@@ -107,6 +110,18 @@ class App extends PureComponent<PropTypes, State> {
     }
     if (this.props.error) {
       return <ErrorPage error={this.props.error} />;
+    }
+    if (this.props.geoBlocked) {
+      // Only show people the link to withdraw if they actually have a balance.
+      const balances = 
+          this.props.user
+              ? this.props.getPlatformBalances(this.props.user.id)
+              : null;
+      const withdraw =
+          balances && !balances.empty()
+              ? this.props.withdrawAllToReddit
+              : null;
+      return <GeoBlockedPage withdrawAllToReddit={withdraw} />;
     }
     if (!this.props.initialized) {
       return <SplashPage />;

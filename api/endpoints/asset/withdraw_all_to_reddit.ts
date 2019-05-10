@@ -1,9 +1,5 @@
 import {Request, Response} from 'express';
-import {
-  ensurePropInEnum,
-  ensurePropString,
-  ensureSafeInteger,
-} from '../../../common/ensure';
+import {ensurePropString} from '../../../common/ensure';
 import {HttpMethod} from '../../../common/net/http_method';
 import {WithdrawalType} from '../../../common/types/Withdrawal';
 import {GlazeDbClient} from '../../../glaze_db';
@@ -13,7 +9,7 @@ import {withdrawAsset} from '../../common/withdrawals';
 import {ApiServer} from '../../server';
 import {requireUserId} from '../../user';
 
-export function routeAssetWithdraw(
+export function routeAssetWithdrawAllToReddit(
     apiServer: ApiServer,
     glazeDb: GlazeDbClient,
     redditClient: RedditClient,
@@ -22,10 +18,10 @@ export function routeAssetWithdraw(
     getContractAddress: (chainId: number, assetId: number) => string) {
   apiServer.addListener(
       HttpMethod.POST,
-      '/asset::asset_id/withdraw::amount',
+      '/asset/withdraw-all-to-reddit',
       async (req: Request, res: Response) => {
         const apiServerConfig = await apiServer.config;
-        await handleAssetWithdraw(
+        await handleAssetWithdrawAllToReddit(
             glazeDb,
             redditClient,
             redditPuppetHost,
@@ -37,7 +33,7 @@ export function routeAssetWithdraw(
       });
 }
 
-async function handleAssetWithdraw(
+async function handleAssetWithdrawAllToReddit(
     glazeDb: GlazeDbClient,
     redditClient: RedditClient,
     redditPuppetHost: string,
@@ -48,31 +44,27 @@ async function handleAssetWithdraw(
     res: Response):
     Promise<void> {
   const userId = await requireUserId(req, glazeDb);
-  const assetId = ensureSafeInteger(+ensurePropString(req.params, 'asset_id'));
-  const amount = ensureSafeInteger(+ensurePropString(req.params, 'amount'));
-  const withdrawalType =
-      ensurePropInEnum<WithdrawalType>(
-          req.body,
-          'type',
-          WithdrawalType);
-  const username =
-      withdrawalType == WithdrawalType.REDDIT
-          ? ensurePropString(req.body, 'username')
-          : '';
+  const username = ensurePropString(req.body, 'username');
 
+  const balances = await glazeDb.getBalances(userId);
+  for (const assetId of balances.getAssetIds()) {
+    const amount = balances.getPlatformValue(assetId);
+    if (amount > 0) {
+      await withdrawAsset(
+          glazeDb,
+          redditClient,
+          redditPuppetHost,
+          redditPuppetPort,
+          ethereumClient,
+          getContractAddress,
+          userId,
+          assetId,
+          amount,
+          WithdrawalType.REDDIT,
+          username);
+    }
+  }
   res
     .set('Content-Type', 'application/json; charset=utf-8')
-    .end(JSON.stringify(
-        await withdrawAsset(
-            glazeDb,
-            redditClient,
-            redditPuppetHost,
-            redditPuppetPort,
-            ethereumClient,
-            getContractAddress,
-            userId,
-            assetId,
-            amount,
-            withdrawalType,
-            username)));
-}
+    .end(JSON.stringify({'ok': true}));
+};

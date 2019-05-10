@@ -38,6 +38,7 @@ type State = {
   error: any;
   apiAvailable: boolean;
   csrfToken: string;
+  geoBlocked: boolean;
   pathname: string;
   user: User|null;
   userPermissions: UserPermission[];
@@ -85,6 +86,7 @@ class AppData extends PureComponent<PropTypes, State> {
       error: null,
       apiAvailable: true,
       csrfToken: '',
+      geoBlocked: false,
       pathname: location.pathname,
       user: null,
       userPermissions: [],
@@ -133,9 +135,23 @@ class AppData extends PureComponent<PropTypes, State> {
       csrfToken,
     }, resolve));
     await this.updateUser();
+    const geoBlocked = await this.isGeoBlocked();
     await new Promise(resolve => this.setState({
       initialized: true,
+      geoBlocked,
     }, resolve));
+  }
+
+  private async isGeoBlocked(): Promise<boolean> {
+     try {
+       await this.apiRequest(HttpMethod.GET, '/user/test-geo-access');
+     } catch (err) {
+       if (UnavailableForLegalReasonsError.is(err)) {
+         return true;
+       }
+       throw err;
+     }
+     return false;
   }
 
   render() {
@@ -143,6 +159,7 @@ class AppData extends PureComponent<PropTypes, State> {
     return <App
         initialized={this.state.initialized}
         error={this.state.error}
+        geoBlocked={this.state.geoBlocked}
         apiAvailable={this.state.apiAvailable}
         csrfToken={this.state.csrfToken}
         pathname={this.state.pathname}
@@ -159,6 +176,7 @@ class AppData extends PureComponent<PropTypes, State> {
         histories={this.state.histories}
         depositTokens={this.getTokenDepositer()}
         withdraw={this.withdraw}
+        withdrawAllToReddit={this.withdrawAllToReddit}
         getSignedWithdrawals={this.state.getSignedWithdrawals}
         getPendingSignedWithdrawals={this.state.getPendingSignedWithdrawals}
         executeSignedWithdrawal={hasWeb3 ? this.executeSignedWithdrawal : null}
@@ -176,6 +194,22 @@ class AppData extends PureComponent<PropTypes, State> {
         setUserTerms={this.setUserTerms}
         web3ClientDetected={hasWeb3} />;
   }
+
+  componentDidMount() {
+    window.addEventListener('error', this.onError);
+    window.addEventListener('unhandledrejection', this.onError);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('error', this.onError);
+    window.removeEventListener('unhandledrejection', this.onError);
+  }
+
+  private onError = (event: Event) => {
+    this.setState({
+      error: (event as any).error || (event as any).reason || 'Unknown Error',
+    });
+  };
 
   private async getCsrfToken(): Promise<string> {
     const response = await this.apiRequest(HttpMethod.GET, '/user/csrf-token');
@@ -677,6 +711,13 @@ class AppData extends PureComponent<PropTypes, State> {
       .map(SignedWithdrawal.fromJSON);
   }
 
+  private withdrawAllToReddit = async () => {
+    await this.apiRequest(
+        HttpMethod.POST,
+        '/asset/withdraw-all-to-reddit',
+        {'username': ensure(this.state.user).username});
+  };
+
   private getRedditLoginConfig = (): [string, string]|undefined => {
     if (this.state.redditClientId) {
       return [
@@ -757,29 +798,24 @@ class AppData extends PureComponent<PropTypes, State> {
       path: string,
       body: any = null):
       Promise<Object> {
-    try {
-      const fetchOptions = {
-        'method': httpMethodToString(method),
-        'headers': {
-          'X-CSRF-Token': this.state.csrfToken,
-        },
-        'credentials': 'include' as 'include',
-      };
-      if (body) {
-        (fetchOptions['headers'] as any)['Content-Type'] = 'application/json';
-        (fetchOptions as any)['body'] = JSON.stringify(body);
-      }
-      const {response, data} =
-          await this.fetch(method, `${API_BASE}${path}`, fetchOptions);
-      if (response.status == 200) {
-        return data;
-      } else {
-        this.setState({error: data});
-        throw new Error('Failed API request: ' + (data as any)['message']);
-      }
-    } catch (error) {
-      this.setState({error});
-      throw error;
+    const fetchOptions = {
+      'method': httpMethodToString(method),
+      'headers': {
+        'X-CSRF-Token': this.state.csrfToken,
+      },
+      'credentials': 'include' as 'include',
+    };
+    if (body) {
+      (fetchOptions['headers'] as any)['Content-Type'] = 'application/json';
+      (fetchOptions as any)['body'] = JSON.stringify(body);
+    }
+    const {response, data} =
+        await this.fetch(method, `${API_BASE}${path}`, fetchOptions);
+    if (response.status == 200) {
+      return data;
+    } else {
+      this.setState({error: data});
+      throw new Error('Failed API request: ' + (data as any)['message']);
     }
   }
 
@@ -797,10 +833,18 @@ class AppData extends PureComponent<PropTypes, State> {
         return ongoing;
       }
     }
-    const promise = fetch(url, options).then(async (response: Response) => ({
-      response,
-      data: await response.json(),
-    }));
+    const promise = fetch(url, options)
+        .then(async (response: Response) => {
+      switch (response.status) {
+        case 451:
+          throw new UnavailableForLegalReasonsError();
+        default:
+          return {
+            response,
+            data: await response.json(),
+          };
+      }
+    });
     if (key) {
       this.ongoingGetRequests.set(key, promise);
     }
@@ -919,6 +963,19 @@ class AppData extends PureComponent<PropTypes, State> {
       getAllUserTerms: () => this.getAllUserTerms(),
     }, resolve));
   };
+}
+
+const unavailableForLegalReasonsTag = Symbol('UnvailableForLegalReasons');
+class UnavailableForLegalReasonsError extends Error {
+  [unavailableForLegalReasonsTag] = true;
+
+  static is(value: any) {
+    return value && unavailableForLegalReasonsTag in value;
+  }
+
+  constructor() {
+    super('Unavailable for legal reasons');
+  }
 }
 
 export default AppData;

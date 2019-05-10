@@ -33,6 +33,10 @@ export class Balances {
     return this.platformValues.get(assetId);
   }
 
+  empty(): boolean {
+    return !this.getAssetIds().some(u => !!this.getPlatformValue(u));
+  }
+
   toJSON() {
     return {
       'platform_values': [...this.platformValues.entries()],
