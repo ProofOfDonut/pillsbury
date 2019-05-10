@@ -112,16 +112,8 @@ class App extends PureComponent<PropTypes, State> {
       return <ErrorPage error={this.props.error} />;
     }
     if (this.props.geoBlocked) {
-      // Only show people the link to withdraw if they actually have a balance.
-      const balances = 
-          this.props.user
-              ? this.props.getPlatformBalances(this.props.user.id)
-              : null;
-      const withdraw =
-          balances && !balances.empty()
-              ? this.props.withdrawAllToReddit
-              : null;
-      return <GeoBlockedPage withdrawAllToReddit={withdraw} />;
+      return <GeoBlockedPage
+          withdrawAllToReddit={this.getWithdrawAllFunction()} />;
     }
     if (!this.props.initialized) {
       return <SplashPage />;
@@ -144,7 +136,8 @@ class App extends PureComponent<PropTypes, State> {
           title={term.title}
           text={term.text}
           acceptLabel={term.acceptLabel}
-          accept={() => this.props.acceptUserTerm(term.id)} />;
+          accept={() => this.props.acceptUserTerm(term.id)}
+          withdrawAllToReddit={this.getWithdrawAllFunction()} />;
     }
     return (
       <Chrome pathname={this.props.pathname}
@@ -263,6 +256,17 @@ class App extends PureComponent<PropTypes, State> {
 
   private refreshPlatformBalances =
       () => this.props.refreshPlatformBalances(ensure(this.props.user).id);
+
+  private getWithdrawAllFunction(): (() => void)|null {
+    // Only show people the link to withdraw if they actually have a balance.
+    const balances = 
+        this.props.user
+            ? this.props.getPlatformBalances(this.props.user.id)
+            : null;
+    return balances && !balances.empty()
+        ? this.props.withdrawAllToReddit
+        : null;
+  }
 }
 
 export default withStyles(styles)(App);

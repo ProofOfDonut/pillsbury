@@ -3,8 +3,10 @@ import Checkbox from '@material-ui/core/Checkbox';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import Typography from '@material-ui/core/Typography';
 import {Theme, withStyles} from '@material-ui/core/styles';
+import CheckIcon from '@material-ui/icons/Check';
 import React, {ChangeEvent, PureComponent} from 'react';
 import Module from '../components/Module';
+import {ensure} from '../common/ensure';
 
 const styles = (theme: Theme) => ({
   root: {
@@ -21,6 +23,16 @@ const styles = (theme: Theme) => ({
   spacer: {
     flexGrow: 1,
   },
+  check: {
+    width: 20,
+    height: 20,
+    color: '#0a0',
+  },
+  withdrawAllLinkContainer: {
+    marginTop: 8,
+    fontSize: '90%',
+    textAlign: 'center' as 'center',
+  },
 });
 
 type PropTypes = {
@@ -29,18 +41,23 @@ type PropTypes = {
     text: string;
     buttons: string;
     spacer: string;
+    check: string;
+    withdrawAllLinkContainer: string;
   };
   title: string;
   text: string;
   acceptLabel: string;
   accept: () => void;
+  withdrawAllToReddit: (() => void)|null;
 };
 type State = {
   accepted: boolean;
+  withdrawButtonClicked: boolean;
 };
 class UserTermsPage extends PureComponent<PropTypes, State> {
   state = {
     accepted: false,
+    withdrawButtonClicked: false,
   };
 
   render() {
@@ -60,12 +77,18 @@ class UserTermsPage extends PureComponent<PropTypes, State> {
                   <Checkbox checked={this.state.accepted}
                             onChange={this.checkboxChanged} />} />
           <div className={classes.spacer}></div>
-          <Button variant="contained"
+          <div>
+            <div>
+              <Button
+                  variant="contained"
                   color="primary"
                   disabled={!this.state.accepted}
                   onClick={this.state.accepted ? this.props.accept : undefined}>
-            Continue
-          </Button>
+                Continue
+              </Button>
+            </div>
+            {this.renderWithdrawalLink()}
+          </div>
         </div>
       </Module>
     );
@@ -76,6 +99,32 @@ class UserTermsPage extends PureComponent<PropTypes, State> {
       accepted: event.target.checked,
     });
   }
+
+  private renderWithdrawalLink() {
+    const classes = this.props.classes;
+    if (this.state.withdrawButtonClicked) {
+      return (
+        <div className={classes.withdrawAllLinkContainer}>
+          <CheckIcon className={classes.check} />
+        </div>
+      );
+    }
+    if (this.props.withdrawAllToReddit) {
+      return (
+        <div className={classes.withdrawAllLinkContainer}>
+          <a href="#"
+             onClick={this.withdrawAllToReddit}>
+            Withdraw All
+          </a>
+        </div>
+      );
+    }
+  }
+
+  private withdrawAllToReddit = () => {
+    this.setState({withdrawButtonClicked: true});
+    ensure(this.props.withdrawAllToReddit)();
+  };
 }
 
 export default withStyles(styles, {withTheme: true})(UserTermsPage);
